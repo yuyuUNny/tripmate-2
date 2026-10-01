@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.local
+.idea/
+.vscode/
+apps/api/target/
+apps/web/.next/
+apps/web/node_modules/
+apps/web/out/
+coverage/
+*.tsbuildinfo
