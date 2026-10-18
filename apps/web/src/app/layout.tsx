@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TripMate 2.0 — Plan together without overwriting each other",
-  description: "A collaborative itinerary planner built around reliable concurrent editing.",
+  title: "TripMate — Your trips, all in one place",
+  description: "Plan, organize, and share every trip with your travel crew.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

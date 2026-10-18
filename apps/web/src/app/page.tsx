@@ -1,74 +1,305 @@
+"use client";
+
 import Link from "next/link";
+import { FormEvent, useMemo, useState } from "react";
+import "./home.css";
 
-const foundations = [
-  ["Typed boundaries", "Next.js, TypeScript, validated API inputs, and explicit response contracts."],
-  ["Conflict-aware", "Versioned itinerary data designed to detect stale writes before they become lost updates."],
-  ["Built to prove", "Integration tests and CI come before scalability claims or résumé metrics."],
+type Trip = {
+  id: string;
+  title: string;
+  destination: string;
+  dates: string;
+  duration: string;
+  image?: string;
+  status: "Upcoming" | "Planning" | "Past";
+  people: string[];
+  liked: boolean;
+};
+
+const initialTrips: Trip[] = [
+  {
+    id: "europe-adventure",
+    title: "Europe adventure",
+    destination: "Paris · Munich · Berlin",
+    dates: "Oct 18–24, 2026",
+    duration: "7 days",
+    status: "Upcoming",
+    people: ["UL", "MC", "JM"],
+    liked: true,
+  },
+  {
+    id: "lisbon-long-weekend",
+    title: "Lisbon long weekend",
+    destination: "Lisbon, Portugal",
+    dates: "May 21–25, 2027",
+    duration: "5 days",
+    status: "Planning",
+    people: ["UL", "AR"],
+    liked: false,
+  },
+  {
+    id: "kyoto-in-bloom",
+    title: "Kyoto in bloom",
+    destination: "Kyoto · Osaka",
+    dates: "Apr 3–11, 2026",
+    duration: "9 days",
+    status: "Past",
+    people: ["UL", "MC", "SN", "AR"],
+    liked: false,
+  },
 ];
 
-const roadmap = [
-  "Secure owner, editor, and viewer roles",
-  "Two-browser optimistic conflict recovery",
-  "Redis edit leases and collaborator presence",
-  "WebSocket updates with reconnect reconciliation",
-];
+function SearchIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>;
+}
+
+function PlusIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>;
+}
+
+function ArrowIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg>;
+}
+
+function MoreIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>;
+}
+
+function ShareIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg>;
+}
+
+function HeartIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 6l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.3 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>;
+}
+
+function EditIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6-3.2-3.2L5 15.8 4 20ZM13.9 6.9l3.2 3.2"/></svg>;
+}
+
+function PictureIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 2-2 5 5"/></svg>;
+}
+
+function TrashIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>;
+}
 
 export default function Home() {
+  const [trips, setTrips] = useState(initialTrips);
+  const [query, setQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"All" | Trip["status"]>("All");
+  const [isCreating, setIsCreating] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [deletingTrip, setDeletingTrip] = useState<Trip | null>(null);
+
+  const visibleTrips = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return trips.filter((trip) => {
+      const matchesFilter = activeFilter === "All" || trip.status === activeFilter;
+      const matchesQuery = !normalizedQuery || `${trip.title} ${trip.destination}`.toLowerCase().includes(normalizedQuery);
+      return matchesFilter && matchesQuery;
+    });
+  }, [activeFilter, query, trips]);
+
+  function shareTrip(trip: Trip) {
+    const url = `${window.location.origin}/trips/${trip.id}/overview`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setNotice(`Link copied for ${trip.title}`);
+      window.setTimeout(() => setNotice(""), 2400);
+    });
+  }
+
+  function updateTrip(id: string, update: Partial<Trip>) {
+    setTrips((current) => current.map((trip) => trip.id === id ? { ...trip, ...update } : trip));
+  }
+
+  function renameTrip(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingTrip) return;
+    const title = String(new FormData(event.currentTarget).get("title") || "").trim();
+    if (!title) return;
+    updateTrip(editingTrip.id, { title });
+    setEditingTrip(null);
+    setNotice("Trip name updated");
+    window.setTimeout(() => setNotice(""), 2400);
+  }
+
+  function changeCover(trip: Trip, file?: File) {
+    setOpenMenuId(null);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      updateTrip(trip.id, { image: reader.result });
+      setNotice(`Cover updated for ${trip.title}`);
+      window.setTimeout(() => setNotice(""), 2400);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function deleteTrip() {
+    if (!deletingTrip) return;
+    setTrips((current) => current.filter((trip) => trip.id !== deletingTrip.id));
+    setNotice(`${deletingTrip.title} was deleted`);
+    setDeletingTrip(null);
+    window.setTimeout(() => setNotice(""), 2400);
+  }
+
+  function createTrip(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const title = String(form.get("title") || "Untitled trip").trim();
+    const destination = String(form.get("destination") || "Destination to be decided").trim();
+    const id = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "new-trip"}-${Date.now().toString().slice(-4)}`;
+    setTrips((current) => [{
+      id,
+      title,
+      destination,
+      dates: "Dates to be decided",
+      duration: "New trip",
+      status: "Planning",
+      people: ["UL"],
+      liked: false,
+    }, ...current]);
+    setActiveFilter("All");
+    setQuery("");
+    setIsCreating(false);
+    setNotice(`${title} was added`);
+    window.setTimeout(() => setNotice(""), 2400);
+  }
+
   return (
-    <main>
-      <section className="hero-shell">
-        <nav className="nav-wrap" aria-label="Primary navigation">
-          <a className="brand" href="#top" aria-label="TripMate home">
-            <span className="brand-mark" aria-hidden="true">T</span>
-            <span>TripMate <b>2.0</b></span>
-          </a>
-          <a className="nav-link" href="https://github.com/yuyuUNny" target="_blank" rel="noreferrer">
-            GitHub <span aria-hidden="true">↗</span>
-          </a>
+    <main className="trips-home">
+      <header className="trips-header">
+        <Link className="trips-brand" href="/" aria-label="TripMate home">
+          <span className="trips-brand-mark" aria-hidden="true">T</span>
+          <span>TripMate</span>
+        </Link>
+        <nav className="trips-header-actions" aria-label="Account">
+          <button className="trips-help" type="button">Help</button>
+          <button className="trips-profile" type="button" aria-label="Open profile for Uny Li">
+            <span>UL</span><span><strong>Uny Li</strong><small>Trip owner</small></span>
+          </button>
         </nav>
+      </header>
 
-        <div className="hero-grid" id="top">
-          <div className="hero-copy">
-            <p className="eyebrow"><span /> Collaborative planning, rebuilt</p>
-            <h1>Plan the trip.<br /><em>Keep everyone in sync.</em></h1>
-            <p className="lede">TripMate 2.0 is an individual redesign of a group travel planner, centered on reliable concurrent editing—not a pile of framework keywords.</p>
-            <div className="hero-actions">
-              <Link className="button primary" href="/trips/europe-adventure/overview">Open the workspace</Link>
-              <a className="button secondary" href="#roadmap">View the build roadmap</a>
-            </div>
-            <p className="status"><span /> Foundation milestone in progress</p>
+      <section className="trips-content" aria-labelledby="trips-title">
+        <div className="trips-intro">
+          <div>
+            <p className="trips-eyebrow"><span /> YOUR TRAVEL SPACE</p>
+            <h1 id="trips-title">All trips</h1>
+            <p>Pick up where you left off, or start planning somewhere new.</p>
           </div>
+          <button className="trips-new-button" type="button" onClick={() => setIsCreating(true)}>
+            <PlusIcon /> New trip
+          </button>
+        </div>
 
-          <div className="planner-card" aria-label="Sample collaborative itinerary">
-            <div className="card-topline">
-              <div><small>UPCOMING TRIP</small><strong>Europe adventure</strong></div>
-              <div className="avatars" aria-label="Three collaborators"><i>U</i><i>M</i><i>J</i></div>
-            </div>
-            <div className="date-strip"><b>18</b><span>OCT<br />SUNDAY</span><span className="live-pill">● 3 planning</span></div>
-            <div className="timeline">
-              <article><time>9:00</time><span className="pin coral" /><div><b>The Louvre</b><small>Museum · 3 hrs</small></div></article>
-              <article><time>12:30</time><span className="pin gold" /><div><b>Café de Flore</b><small>Lunch · 75 min</small></div></article>
-              <article className="editing"><time>15:00</time><span className="pin teal" /><div><b>Seine river walk</b><small><i /> Uny is editing this stop</small></div></article>
-            </div>
-            <div className="sync-note"><span>✓</span><p><b>No lost updates</b><small>Version checks protect every saved edit.</small></p></div>
+        <div className="trips-toolbar">
+          <label className="trips-search">
+            <span className="sr-only">Search trips</span>
+            <SearchIcon />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by trip or destination" />
+          </label>
+          <div className="trips-filters" aria-label="Filter trips">
+            {(["All", "Upcoming", "Planning", "Past"] as const).map((filter) => (
+              <button key={filter} type="button" className={activeFilter === filter ? "active" : ""} aria-pressed={activeFilter === filter} onClick={() => setActiveFilter(filter)}>
+                {filter}{filter === "All" ? ` ${trips.length}` : ""}
+              </button>
+            ))}
           </div>
         </div>
+
+        {visibleTrips.length ? (
+          <div className="trip-card-grid">
+            {visibleTrips.map((trip) => (
+              <article className="trip-card" key={trip.id}>
+                <Link className="trip-card-link" href={`/trips/${trip.id}/overview`} aria-label={`Open ${trip.title}`} />
+                <div className={`trip-card-image ${trip.image ? "has-cover" : ""}`} style={trip.image ? { backgroundImage: `url(${trip.image})` } : undefined}>
+                  {!trip.image && <span className="trip-cover-placeholder" aria-label="No cover picture"><PictureIcon /></span>}
+                  <span className={`trip-status trip-status-${trip.status.toLowerCase()}`}>{trip.status}</span>
+                  <button className="trip-more" type="button" aria-label={`More options for ${trip.title}`} aria-expanded={openMenuId === trip.id} onClick={() => setOpenMenuId((current) => current === trip.id ? null : trip.id)}><MoreIcon /></button>
+                  {openMenuId === trip.id && (
+                    <div className="trip-card-menu" role="menu">
+                      <button type="button" role="menuitem" onClick={() => { setEditingTrip(trip); setOpenMenuId(null); }}><EditIcon /> Change trip name</button>
+                      <label role="menuitem"><PictureIcon /> Change cover picture<input type="file" accept="image/*" onChange={(event) => changeCover(trip, event.target.files?.[0])} /></label>
+                      <button className="danger" type="button" role="menuitem" onClick={() => { setDeletingTrip(trip); setOpenMenuId(null); }}><TrashIcon /> Delete trip</button>
+                    </div>
+                  )}
+                </div>
+                <div className="trip-card-body">
+                  <p className="trip-destination">{trip.destination}</p>
+                  <h2>{trip.title}</h2>
+                  <div className="trip-meta"><span>{trip.dates}</span><i /> <span>{trip.duration}</span></div>
+                  <div className="trip-card-footer">
+                    <div className="trip-people" aria-label={`${trip.people.length} travelers`}>
+                      {trip.people.slice(0, 3).map((person, index) => <span key={person} className={`person-${index}`}>{person}</span>)}
+                      {trip.people.length > 3 && <span className="person-more">+{trip.people.length - 3}</span>}
+                    </div>
+                    <div className="trip-actions">
+                      <button className={`trip-like ${trip.liked ? "active" : ""}`} type="button" aria-label={trip.liked ? `Remove ${trip.title} from liked trips` : `Like ${trip.title}`} aria-pressed={trip.liked} onClick={() => updateTrip(trip.id, { liked: !trip.liked })}><HeartIcon /></button>
+                      <button type="button" onClick={() => shareTrip(trip)}><ShareIcon /> Share</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            <button className="trip-add-card" type="button" onClick={() => setIsCreating(true)}>
+              <span><PlusIcon /></span><strong>Plan another trip</strong><small>Start with a destination and invite your travel crew.</small>
+            </button>
+          </div>
+        ) : (
+          <div className="trips-empty"><SearchIcon /><h2>No trips found</h2><p>Try another destination or change the selected filter.</p></div>
+        )}
       </section>
 
-      <section className="content-section" id="architecture">
-        <div className="section-heading"><p>ENGINEERING FOUNDATION</p><h2>Complexity with a reason.</h2></div>
-        <div className="foundation-grid">
-          {foundations.map(([title, text], index) => (
-            <article key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{text}</p></article>
-          ))}
+      {isCreating && (
+        <div className="trip-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setIsCreating(false); }}>
+          <section className="trip-dialog" role="dialog" aria-modal="true" aria-labelledby="new-trip-title">
+            <button className="trip-dialog-close" type="button" aria-label="Close" onClick={() => setIsCreating(false)}>×</button>
+            <p className="trips-eyebrow"><span /> NEW ADVENTURE</p>
+            <h2 id="new-trip-title">Where to next?</h2>
+            <p className="trip-dialog-intro">Give the trip a name. You can add dates, stops, and people in the workspace.</p>
+            <form onSubmit={createTrip}>
+              <label>TRIP NAME<input name="title" placeholder="Summer in Italy" required autoFocus /></label>
+              <label>DESTINATION<input name="destination" placeholder="Rome, Italy" required /></label>
+              <div className="trip-dialog-actions"><button type="button" onClick={() => setIsCreating(false)}>Cancel</button><button type="submit">Create trip <ArrowIcon /></button></div>
+            </form>
+          </section>
         </div>
-        <div className="stack-line"><span>Next.js + TypeScript</span><i>→</i><span>Spring Boot</span><i>→</i><span>PostgreSQL</span><i>+</i><span className="muted">Redis milestone</span></div>
-      </section>
+      )}
 
-      <section className="roadmap-section" id="roadmap">
-        <div><p className="eyebrow dark"><span /> NEXT MILESTONE</p><h2>Reliable collaboration,<br />proved in two browsers.</h2></div>
-        <ol>{roadmap.map((item, index) => <li key={item}><span>{index + 1}</span>{item}</li>)}</ol>
-      </section>
+      {editingTrip && (
+        <div className="trip-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditingTrip(null); }}>
+          <section className="trip-dialog trip-dialog-compact" role="dialog" aria-modal="true" aria-labelledby="rename-trip-title">
+            <button className="trip-dialog-close" type="button" aria-label="Close" onClick={() => setEditingTrip(null)}>×</button>
+            <p className="trips-eyebrow"><span /> TRIP DETAILS</p>
+            <h2 id="rename-trip-title">Change trip name</h2>
+            <form onSubmit={renameTrip}>
+              <label>TRIP NAME<input name="title" defaultValue={editingTrip.title} required autoFocus /></label>
+              <div className="trip-dialog-actions"><button type="button" onClick={() => setEditingTrip(null)}>Cancel</button><button type="submit">Save changes</button></div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {deletingTrip && (
+        <div className="trip-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setDeletingTrip(null); }}>
+          <section className="trip-dialog trip-dialog-compact" role="alertdialog" aria-modal="true" aria-labelledby="delete-trip-title" aria-describedby="delete-trip-description">
+            <button className="trip-dialog-close" type="button" aria-label="Close" onClick={() => setDeletingTrip(null)}>×</button>
+            <p className="trips-eyebrow"><span /> DELETE TRIP</p>
+            <h2 id="delete-trip-title">Delete {deletingTrip.title}?</h2>
+            <p className="trip-dialog-intro" id="delete-trip-description">This removes the trip from your home page. This action cannot be undone.</p>
+            <div className="trip-dialog-actions trip-delete-actions"><button type="button" onClick={() => setDeletingTrip(null)}>Keep trip</button><button type="button" onClick={deleteTrip}>Delete trip</button></div>
+          </section>
+        </div>
+      )}
+
+      <p className={`trip-toast ${notice ? "visible" : ""}`} role="status" aria-live="polite">{notice}</p>
     </main>
   );
 }
