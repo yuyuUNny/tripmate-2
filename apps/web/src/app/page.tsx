@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const foundations = [
   ["Typed boundaries", "Next.js, TypeScript, validated API inputs, and explicit response contracts."],
   ["Conflict-aware", "Versioned itinerary data designed to detect stale writes before they become lost updates."],
@@ -31,7 +33,7 @@ export default function Home() {
             <h1>Plan the trip.<br /><em>Keep everyone in sync.</em></h1>
             <p className="lede">TripMate 2.0 is an individual redesign of a group travel planner, centered on reliable concurrent editing—not a pile of framework keywords.</p>
             <div className="hero-actions">
-              <a className="button primary" href="#architecture">Explore the architecture</a>
+              <Link className="button primary" href="/trips/europe-adventure/overview">Open the workspace</Link>
               <a className="button secondary" href="#roadmap">View the build roadmap</a>
             </div>
             <p className="status"><span /> Foundation milestone in progress</p>
@@ -39,14 +41,14 @@ export default function Home() {
 
           <div className="planner-card" aria-label="Sample collaborative itinerary">
             <div className="card-topline">
-              <div><small>UPCOMING TRIP</small><strong>Toronto weekend</strong></div>
+              <div><small>UPCOMING TRIP</small><strong>Europe adventure</strong></div>
               <div className="avatars" aria-label="Three collaborators"><i>U</i><i>M</i><i>J</i></div>
             </div>
-            <div className="date-strip"><b>18</b><span>OCT<br />SATURDAY</span><span className="live-pill">● 3 planning</span></div>
+            <div className="date-strip"><b>18</b><span>OCT<br />SUNDAY</span><span className="live-pill">● 3 planning</span></div>
             <div className="timeline">
-              <article><time>9:30</time><span className="pin coral" /><div><b>St. Lawrence Market</b><small>Breakfast · 90 min</small></div></article>
-              <article><time>12:00</time><span className="pin gold" /><div><b>Distillery District</b><small>Walk & explore · 2 hrs</small></div></article>
-              <article className="editing"><time>15:30</time><span className="pin teal" /><div><b>Harbourfront</b><small><i /> Uny is editing this stop</small></div></article>
+              <article><time>9:00</time><span className="pin coral" /><div><b>The Louvre</b><small>Museum · 3 hrs</small></div></article>
+              <article><time>12:30</time><span className="pin gold" /><div><b>Café de Flore</b><small>Lunch · 75 min</small></div></article>
+              <article className="editing"><time>15:00</time><span className="pin teal" /><div><b>Seine river walk</b><small><i /> Uny is editing this stop</small></div></article>
             </div>
             <div className="sync-note"><span>✓</span><p><b>No lost updates</b><small>Version checks protect every saved edit.</small></p></div>
           </div>
