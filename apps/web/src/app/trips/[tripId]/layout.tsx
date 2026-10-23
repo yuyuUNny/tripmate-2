@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowIcon } from "./_components/icons";
 import { WorkspaceNav } from "./_components/workspace-nav";
-import { WorkspaceProvider } from "./workspace-context";
+import { WorkspaceProvider, WorkspaceTripIdentity } from "./workspace-context";
 import "./workspace.css";
 
 export default async function TripLayout({ children, params }: LayoutProps<"/trips/[tripId]">) {
@@ -23,8 +23,7 @@ export default async function TripLayout({ children, params }: LayoutProps<"/tri
             </Link>
             <div className="tmw-trip-identity">
               <span className="tmw-kicker">CURRENT TRIP</span>
-              <strong>Europe adventure</strong>
-              <small>Oct 18–24 · 3 countries</small>
+              <WorkspaceTripIdentity />
             </div>
           </div>
 

@@ -52,7 +52,16 @@ type WorkspaceState = {
   members: Member[];
 };
 
+type TripDetails = {
+  id: string;
+  name: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+};
+
 type WorkspaceContextValue = WorkspaceState & {
+  trip: TripDetails | null;
   addDestination: (destination: Omit<Destination, "id">) => void;
   moveDestination: (id: string, direction: -1 | 1) => void;
   setTravelMode: (fromId: string, toId: string, mode: TravelLeg["mode"]) => void;
@@ -64,33 +73,13 @@ type WorkspaceContextValue = WorkspaceState & {
   changeRole: (id: string, role: "Editor" | "Viewer") => void;
 };
 
-const seedWorkspace: WorkspaceState = {
-  destinations: [
-    { id: "paris", city: "Paris", country: "France", arrivalDate: "2026-10-18", departureDate: "2026-10-19" },
-    { id: "munich", city: "Munich", country: "Germany", arrivalDate: "2026-10-20", departureDate: "2026-10-21" },
-    { id: "berlin", city: "Berlin", country: "Germany", arrivalDate: "2026-10-22", departureDate: "2026-10-24" },
-  ],
-  travelLegs: [
-    { id: "leg-paris-munich", fromDestinationId: "paris", toDestinationId: "munich", mode: "Train" },
-    { id: "leg-munich-berlin", fromDestinationId: "munich", toDestinationId: "berlin", mode: "Train" },
-  ],
-  stops: [
-    { id: "paris-louvre", destinationId: "paris", day: "2026-10-18", time: "09:00", title: "The Louvre", detail: "Museum · 3 hrs" },
-    { id: "paris-cafe", destinationId: "paris", day: "2026-10-18", time: "12:30", title: "Café de Flore", detail: "Lunch · 75 min" },
-    { id: "paris-seine", destinationId: "paris", day: "2026-10-18", time: "15:00", title: "Seine river walk", detail: "Walk · 90 min" },
-    { id: "paris-montmartre", destinationId: "paris", day: "2026-10-19", time: "10:00", title: "Montmartre", detail: "Explore · 2 hrs" },
-    { id: "munich-square", destinationId: "munich", day: "2026-10-20", time: "09:30", title: "Marienplatz", detail: "Old town · 90 min" },
-    { id: "munich-garden", destinationId: "munich", day: "2026-10-20", time: "13:00", title: "English Garden", detail: "Picnic · 2 hrs" },
-    { id: "berlin-gate", destinationId: "berlin", day: "2026-10-22", time: "10:00", title: "Brandenburg Gate", detail: "Landmark · 60 min" },
-  ],
-  expenses: [
-    { id: "expense-hotel", title: "Paris hotel", amount: 486, paidBy: "Uny", category: "Stay" },
-    { id: "expense-train", title: "Paris to Munich train", amount: 184.5, paidBy: "Maya", category: "Transport" },
-  ],
+const emptyWorkspace: WorkspaceState = {
+  destinations: [],
+  travelLegs: [],
+  stops: [],
+  expenses: [],
   members: [
     { id: "member-uny", name: "Uny Li", email: "uny@example.com", role: "Owner", status: "Active", initials: "UL", color: "ink" },
-    { id: "member-maya", name: "Maya Chen", email: "maya@example.com", role: "Editor", status: "Active", initials: "MC", color: "coral" },
-    { id: "member-jules", name: "Jules Martin", email: "jules@example.com", role: "Viewer", status: "Active", initials: "JM", color: "teal" },
   ],
 };
 
@@ -102,9 +91,19 @@ function destinationId(city: string) {
 }
 
 export function WorkspaceProvider({ tripId, children }: { tripId: string; children: React.ReactNode }) {
-  const [state, setState] = useState<WorkspaceState>(seedWorkspace);
+  const [state, setState] = useState<WorkspaceState>(emptyWorkspace);
+  const [trip, setTrip] = useState<TripDetails | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
-  const storageKey = `tripmate-multicity-v1-${tripId}`;
+  const storageKey = `tripmate-multicity-v2-${tripId}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/trips/${tripId}`, { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() as Promise<TripDetails> : null)
+      .then((savedTrip) => { if (savedTrip) setTrip(savedTrip); })
+      .catch(() => { /* The workspace remains usable if trip metadata is temporarily unavailable. */ });
+    return () => controller.abort();
+  }, [tripId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +133,7 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
 
   const value = useMemo<WorkspaceContextValue>(() => ({
     ...state,
+    trip,
     addDestination: (destination) => setState((current) => {
       const id = destinationId(destination.city);
       const previous = current.destinations.at(-1);
@@ -172,7 +172,7 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
       ...current,
       members: current.members.map((member) => member.id === id ? { ...member, role } : member),
     })),
-  }), [state]);
+  }), [state, trip]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
@@ -181,6 +181,12 @@ export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) throw new Error("useWorkspace must be used inside WorkspaceProvider");
   return context;
+}
+
+export function WorkspaceTripIdentity() {
+  const { trip } = useWorkspace();
+  if (!trip) return <><strong>Trip workspace</strong><small>Build your route</small></>;
+  return <><strong>{trip.name}</strong><small>{trip.destination}</small></>;
 }
 
 export function tripDays(start: string, end: string) {
