@@ -8,8 +8,8 @@ final class TripDtos {
     private TripDtos() {}
     record CreateTripRequest(
             @NotBlank @Size(max = 120) String name,
-            @NotBlank @Size(max = 160) String destination,
-            @NotNull @FutureOrPresent LocalDate startDate,
+            @Size(max = 160) String destination,
+            @NotNull LocalDate startDate,
             @NotNull LocalDate endDate) {}
     record AddItineraryItemRequest(
             @NotBlank @Size(max = 160) String title,

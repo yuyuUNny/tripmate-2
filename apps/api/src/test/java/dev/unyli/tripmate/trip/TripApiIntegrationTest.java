@@ -47,6 +47,18 @@ class TripApiIntegrationTest {
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code", is("invalid_trip")));
     }
     @Test
+    void createsPastTripWithoutAnInitialDestination() throws Exception {
+        var start = LocalDate.now().minusDays(10);
+        var body = """
+                {"name":"Previous adventure","startDate":"%s","endDate":"%s"}
+                """.formatted(start, start.plusDays(2));
+        mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name", is("Previous adventure")))
+                .andExpect(jsonPath("$.destination", is("")))
+                .andExpect(jsonPath("$.startDate", is(start.toString())));
+    }
+    @Test
     void listsAndDeletesTrips() throws Exception {
         var start = LocalDate.now().plusDays(20);
         var body = """

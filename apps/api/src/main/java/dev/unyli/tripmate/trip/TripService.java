@@ -14,7 +14,8 @@ public class TripService {
     @Transactional
     public TripResponse create(CreateTripRequest request) {
         if (request.endDate().isBefore(request.startDate())) throw new InvalidTripException("endDate must be on or after startDate");
-        var trip = new Trip(request.name().trim(), request.destination().trim(), request.startDate(), request.endDate());
+        var destination = request.destination() == null ? "" : request.destination().trim();
+        var trip = new Trip(request.name().trim(), destination, request.startDate(), request.endDate());
         return TripResponse.from(trips.save(trip));
     }
     @Transactional(readOnly = true)

@@ -1,14 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { FormEvent, useState } from "react";
 import { PlusIcon } from "../_components/icons";
 import { formatShortDate, tripDays, useWorkspace } from "../workspace-context";
 
+type PlaceResult = {
+  id: string;
+  city: string;
+  region: string;
+  country: string;
+  countryCode: string;
+  formattedName: string;
+  latitude: number;
+  longitude: number;
+};
+
+const RouteMap = dynamic(() => import("../_components/route-map"), {
+  ssr: false,
+  loading: () => <div className="tmw-map-loading" role="status">Loading map…</div>,
+});
+
 export default function OverviewPage() {
   const { trip, destinations, travelLegs, addDestination, moveDestination, setTravelMode } = useWorkspace();
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
+  const [placeSearchStatus, setPlaceSearchStatus] = useState<"idle" | "searching" | "error">("idle");
+  const [placeSearchMessage, setPlaceSearchMessage] = useState("");
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
   const [isAddingDestination, setIsAddingDestination] = useState(false);
@@ -18,12 +38,50 @@ export default function OverviewPage() {
   const routeDays = destinations.length
     ? tripDays(destinations[0].arrivalDate, destinations.at(-1)!.departureDate).length
     : 0;
+
+  async function searchPlaces() {
+    const query = placeQuery.trim();
+    if (query.length < 2 || placeSearchStatus === "searching") return;
+    setPlaceSearchStatus("searching");
+    setPlaceSearchMessage("");
+    setPlaceResults([]);
+    setSelectedPlace(null);
+    try {
+      const response = await fetch(`/geocoding?provider=photon-v1&q=${encodeURIComponent(query)}`);
+      const body = await response.json() as { places?: PlaceResult[]; message?: string };
+      if (!response.ok) throw new Error(body.message || "Could not search for that city.");
+      const places = body.places ?? [];
+      setPlaceResults(places);
+      setPlaceSearchStatus("idle");
+      if (!places.length) setPlaceSearchMessage("No matching cities found. Try adding a country or region.");
+    } catch (error) {
+      setPlaceSearchStatus("error");
+      setPlaceSearchMessage(error instanceof Error ? error.message : "City search is unavailable.");
+    }
+  }
+
+  function choosePlace(place: PlaceResult) {
+    setSelectedPlace(place);
+    setPlaceQuery(place.city);
+    setPlaceResults([]);
+    setPlaceSearchMessage("");
+  }
+
   function submitDestination(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!city.trim() || !country.trim() || !selectedArrivalDate || selectedDepartureDate < selectedArrivalDate) return;
-    addDestination({ city: city.trim(), country: country.trim(), arrivalDate: selectedArrivalDate, departureDate: selectedDepartureDate });
-    setCity("");
-    setCountry("");
+    if (!selectedPlace || !selectedArrivalDate || selectedDepartureDate < selectedArrivalDate) return;
+    addDestination({
+      city: selectedPlace.city,
+      country: selectedPlace.country,
+      formattedName: selectedPlace.formattedName,
+      latitude: selectedPlace.latitude,
+      longitude: selectedPlace.longitude,
+      arrivalDate: selectedArrivalDate,
+      departureDate: selectedDepartureDate,
+    });
+    setPlaceQuery("");
+    setSelectedPlace(null);
+    setPlaceResults([]);
     setIsAddingDestination(false);
   }
 
@@ -34,7 +92,7 @@ export default function OverviewPage() {
         <span className="tmw-count-badge">{destinations.length} destinations</span>
       </header>
 
-      <div className="tmw-overview-grid">
+      <div className={`tmw-overview-grid ${destinations.length === 0 ? "tmw-overview-grid-single" : ""}`}>
         <section className="tmw-route-list" aria-labelledby="route-heading">
           <div className="tmw-section-title"><div><p>GENERAL ROUTE</p><h2 id="route-heading">City to city</h2></div><small>Use arrows to reorder</small></div>
           {destinations.length === 0 && <div className="tmw-empty tmw-route-empty"><button type="button" onClick={() => setIsAddingDestination(true)} aria-label="Add your first destination">＋</button><h3>No destinations yet</h3><p>Use the plus button to add your first city.</p></div>}
@@ -58,22 +116,29 @@ export default function OverviewPage() {
           })}
         </section>
 
-        <aside className="tmw-overview-map">
-          <div className="tmw-map-caption"><span>ROUTE VIEW</span><strong>{trip?.destination ?? "Your route"}</strong></div>
-          <div className="tmw-empty-map-space" aria-label="Reserved area for the trip route map" />
-          <div className="tmw-route-summary"><div><span>{routeDays}</span><small>days</small></div><div><span>{Math.max(0, destinations.length - 1)}</span><small>travel legs</small></div><div><span>{new Set(destinations.map((destination) => destination.country)).size}</span><small>countries</small></div></div>
-        </aside>
+        {destinations.length > 0 && (
+          <aside className="tmw-overview-map">
+            <div className="tmw-map-caption"><span>ROUTE VIEW</span><strong>{destinations.map((destination) => destination.city).join(" → ")}</strong></div>
+            <RouteMap destinations={destinations} />
+            <div className="tmw-route-summary"><div><span>{routeDays}</span><small>days</small></div><div><span>{Math.max(0, destinations.length - 1)}</span><small>travel legs</small></div><div><span>{new Set(destinations.map((destination) => destination.country)).size}</span><small>countries</small></div></div>
+          </aside>
+        )}
       </div>
 
       {(destinations.length > 0 || isAddingDestination) && (
         <section className="tmw-add-destination">
           <div><p className="tmw-panel-label">{destinations.length ? "EXTEND THE ROUTE" : "START THE ROUTE"}</p><h2>{destinations.length ? "Add another destination" : "Add your first destination"}</h2><p>New cities are placed at the end of the journey. You can reorder them above.</p></div>
           <form onSubmit={submitDestination}>
-            <label>City<input value={city} onChange={(event) => setCity(event.target.value)} placeholder="e.g. Prague" required autoFocus={destinations.length === 0} /></label>
-            <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="e.g. Czechia" required /></label>
+            <div className="tmw-place-search-field">
+              <label>Destination<div className="tmw-place-search-control"><input value={placeQuery} onChange={(event) => { setPlaceQuery(event.target.value); setSelectedPlace(null); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchPlaces(); } }} placeholder="e.g. Auckland" required autoFocus={destinations.length === 0} /><button type="button" onClick={() => void searchPlaces()} disabled={placeQuery.trim().length < 2 || placeSearchStatus === "searching"}>{placeSearchStatus === "searching" ? "Finding…" : "Find city"}</button></div></label>
+              {placeResults.length > 0 && <div className="tmw-place-results" role="listbox" aria-label="Matching destinations">{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{[place.region, place.country].filter(Boolean).join(", ")}</small></span><b>{place.countryCode}</b></button>)}</div>}
+              {selectedPlace && <p className="tmw-place-selected"><span>✓</span> {selectedPlace.formattedName}</p>}
+              {placeSearchMessage && <p className={`tmw-place-search-message ${placeSearchStatus === "error" ? "error" : ""}`}>{placeSearchMessage}</p>}
+              <small className="tmw-geocoder-attribution">Place search © OpenStreetMap contributors</small>
+            </div>
             <label>Arrive<input type="date" value={selectedArrivalDate} onChange={(event) => setArrivalDate(event.target.value)} required /></label>
             <label>Leave<input type="date" value={selectedDepartureDate} min={selectedArrivalDate} onChange={(event) => setDepartureDate(event.target.value)} required /></label>
-            <button className="tmw-primary-button" type="submit"><PlusIcon/> Add city</button>
+            <button className="tmw-primary-button" type="submit" disabled={!selectedPlace}><PlusIcon/> Add city</button>
           </form>
         </section>
       )}

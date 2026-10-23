@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ArrowIcon } from "./_components/icons";
 import { WorkspaceNav } from "./_components/workspace-nav";
 import { WorkspaceProvider, WorkspaceTripIdentity } from "./workspace-context";
+import "leaflet/dist/leaflet.css";
 import "./workspace.css";
 
 export default async function TripLayout({ children, params }: LayoutProps<"/trips/[tripId]">) {

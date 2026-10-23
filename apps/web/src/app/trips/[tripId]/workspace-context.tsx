@@ -6,6 +6,9 @@ export type Destination = {
   id: string;
   city: string;
   country: string;
+  formattedName: string;
+  latitude: number;
+  longitude: number;
   arrivalDate: string;
   departureDate: string;
 };
@@ -186,7 +189,7 @@ export function useWorkspace() {
 export function WorkspaceTripIdentity() {
   const { trip } = useWorkspace();
   if (!trip) return <><strong>Trip workspace</strong><small>Build your route</small></>;
-  return <><strong>{trip.name}</strong><small>{trip.destination}</small></>;
+  return <><strong>{trip.name}</strong><small>{trip.destination || "Route not started"}</small></>;
 }
 
 export function tripDays(start: string, end: string) {

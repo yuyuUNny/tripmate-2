@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./home.css";
 
@@ -35,7 +36,7 @@ function toTrip(trip: ApiTrip): Trip {
   return {
     id: trip.id,
     title: trip.name,
-    destination: trip.destination,
+    destination: trip.destination || "Route not started",
     dates: `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`,
     duration: `${duration} ${duration === 1 ? "day" : "days"}`,
     status,
@@ -90,6 +91,7 @@ function TrashIcon() {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | Trip["status"]>("All");
@@ -187,7 +189,6 @@ export default function Home() {
     const form = new FormData(event.currentTarget);
     const payload = {
       name: String(form.get("title") || "").trim(),
-      destination: String(form.get("destination") || "").trim(),
       startDate: String(form.get("startDate") || ""),
       endDate: String(form.get("endDate") || ""),
     };
@@ -205,8 +206,7 @@ export default function Home() {
       setActiveFilter("All");
       setQuery("");
       setIsCreating(false);
-      setNotice(`${created.title} was added`);
-      window.setTimeout(() => setNotice(""), 2400);
+      router.push(`/trips/${created.id}/overview`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not create trip");
     } finally {
@@ -296,7 +296,7 @@ export default function Home() {
             ))}
 
             <button className="trip-add-card" type="button" onClick={() => setIsCreating(true)}>
-              <span><PlusIcon /></span><strong>Plan another trip</strong><small>Start with a destination and invite your travel crew.</small>
+              <span><PlusIcon /></span><strong>Plan another trip</strong><small>Choose your dates, then build the route city by city.</small>
             </button>
           </div>
         ) : (
@@ -309,11 +309,10 @@ export default function Home() {
           <section className="trip-dialog" role="dialog" aria-modal="true" aria-labelledby="new-trip-title">
             <button className="trip-dialog-close" type="button" aria-label="Close" onClick={() => setIsCreating(false)}>×</button>
             <p className="trips-eyebrow"><span /> NEW ADVENTURE</p>
-            <h2 id="new-trip-title">Where to next?</h2>
-            <p className="trip-dialog-intro">Add the essentials now. You can add stops and people in the workspace.</p>
+            <h2 id="new-trip-title">Start a new trip.</h2>
+            <p className="trip-dialog-intro">Name the trip and choose its dates. You’ll build the route city by city next.</p>
             <form onSubmit={createTrip}>
-              <label>TRIP NAME<input name="title" placeholder="Summer in Italy" required autoFocus /></label>
-              <label>DESTINATION<input name="destination" placeholder="Rome, Italy" required /></label>
+              <label>TRIP NAME<input name="title" placeholder="Summer adventure" required autoFocus /></label>
               <div className="trip-date-fields">
                 <label>START DATE<input name="startDate" type="date" required /></label>
                 <label>END DATE<input name="endDate" type="date" required /></label>
