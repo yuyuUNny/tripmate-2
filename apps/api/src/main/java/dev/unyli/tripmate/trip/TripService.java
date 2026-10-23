@@ -1,6 +1,7 @@
 package dev.unyli.tripmate.trip;
 
 import dev.unyli.tripmate.trip.TripDtos.*;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,13 @@ public class TripService {
         return TripResponse.from(trips.save(trip));
     }
     @Transactional(readOnly = true)
+    public List<TripResponse> list() {
+        return trips.findAllByOrderByCreatedAtDesc().stream().map(TripResponse::from).toList();
+    }
+    @Transactional(readOnly = true)
     public TripResponse get(UUID tripId) { return TripResponse.from(findTrip(tripId)); }
+    @Transactional
+    public void delete(UUID tripId) { trips.delete(findTrip(tripId)); }
     @Transactional
     public TripResponse addItineraryItem(UUID tripId, AddItineraryItemRequest request) {
         if (!request.endAt().isAfter(request.startAt())) throw new InvalidTripException("endAt must be after startAt");

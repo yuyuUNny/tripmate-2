@@ -46,4 +46,25 @@ class TripApiIntegrationTest {
         mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code", is("invalid_trip")));
     }
+    @Test
+    void listsAndDeletesTrips() throws Exception {
+        var start = LocalDate.now().plusDays(20);
+        var body = """
+                {"name":"Trip to remove","destination":"Montreal","startDate":"%s","endDate":"%s"}
+                """.formatted(start, start.plusDays(3));
+        var created = mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+        var tripId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+        mvc.perform(get("/api/trips"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", hasItem(tripId)));
+        mvc.perform(delete("/api/trips/{id}", tripId)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/trips/{id}", tripId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is("trip_not_found")));
+        mvc.perform(delete("/api/trips/{id}", tripId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is("trip_not_found")));
+    }
 }

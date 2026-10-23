@@ -3,6 +3,7 @@ package dev.unyli.tripmate.trip;
 import dev.unyli.tripmate.trip.TripDtos.*;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,8 +18,15 @@ public class TripController {
         var trip = trips.create(request);
         return ResponseEntity.created(URI.create("/api/trips/" + trip.id())).body(trip);
     }
+    @GetMapping
+    public List<TripResponse> list() { return trips.list(); }
     @GetMapping("/{tripId}")
     public TripResponse get(@PathVariable UUID tripId) { return trips.get(tripId); }
+    @DeleteMapping("/{tripId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID tripId) {
+        trips.delete(tripId);
+        return ResponseEntity.noContent().build();
+    }
     @PostMapping("/{tripId}/itinerary-items")
     public ResponseEntity<TripResponse> addItem(@PathVariable UUID tripId, @Valid @RequestBody AddItineraryItemRequest request) {
         return ResponseEntity.ok(trips.addItineraryItem(tripId, request));

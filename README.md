@@ -77,8 +77,10 @@ This runs Spring Boot integration tests, TypeScript checking, ESLint, and a prod
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/trips` | List trips |
 | `POST` | `/api/trips` | Create a trip |
 | `GET` | `/api/trips/{tripId}` | Read a trip and itinerary |
+| `DELETE` | `/api/trips/{tripId}` | Delete a trip and its itinerary |
 | `POST` | `/api/trips/{tripId}/itinerary-items` | Add an itinerary item |
 
 The API remains deliberately small while authorization and concurrency guarantees are built and

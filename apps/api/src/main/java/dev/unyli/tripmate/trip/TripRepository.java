@@ -1,4 +1,7 @@
 package dev.unyli.tripmate.trip;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-public interface TripRepository extends JpaRepository<Trip, UUID> {}
+public interface TripRepository extends JpaRepository<Trip, UUID> {
+    List<Trip> findAllByOrderByCreatedAtDesc();
+}

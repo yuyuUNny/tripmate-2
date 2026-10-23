@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import "./home.css";
 
 type Trip = {
@@ -16,38 +16,42 @@ type Trip = {
   liked: boolean;
 };
 
-const initialTrips: Trip[] = [
-  {
-    id: "europe-adventure",
-    title: "Europe adventure",
-    destination: "Paris · Munich · Berlin",
-    dates: "Oct 18–24, 2026",
-    duration: "7 days",
-    status: "Upcoming",
-    people: ["UL", "MC", "JM"],
-    liked: true,
-  },
-  {
-    id: "lisbon-long-weekend",
-    title: "Lisbon long weekend",
-    destination: "Lisbon, Portugal",
-    dates: "May 21–25, 2027",
-    duration: "5 days",
-    status: "Planning",
-    people: ["UL", "AR"],
+type ApiTrip = {
+  id: string;
+  name: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+};
+
+function toTrip(trip: ApiTrip): Trip {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const status = trip.endDate < today ? "Past" : trip.startDate > today ? "Upcoming" : "Planning";
+  const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const start = new Date(`${trip.startDate}T12:00:00`);
+  const end = new Date(`${trip.endDate}T12:00:00`);
+  const duration = Math.round((Date.parse(`${trip.endDate}T00:00:00Z`) - Date.parse(`${trip.startDate}T00:00:00Z`)) / 86_400_000) + 1;
+  return {
+    id: trip.id,
+    title: trip.name,
+    destination: trip.destination,
+    dates: `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`,
+    duration: `${duration} ${duration === 1 ? "day" : "days"}`,
+    status,
+    people: ["UL"],
     liked: false,
-  },
-  {
-    id: "kyoto-in-bloom",
-    title: "Kyoto in bloom",
-    destination: "Kyoto · Osaka",
-    dates: "Apr 3–11, 2026",
-    duration: "9 days",
-    status: "Past",
-    people: ["UL", "MC", "SN", "AR"],
-    liked: false,
-  },
-];
+  };
+}
+
+async function apiError(response: Response) {
+  try {
+    const body = await response.json() as { message?: string; details?: string[] };
+    return body.details?.[0] || body.message || `Request failed (${response.status})`;
+  } catch {
+    return `Request failed (${response.status})`;
+  }
+}
 
 function SearchIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>;
@@ -86,7 +90,7 @@ function TrashIcon() {
 }
 
 export default function Home() {
-  const [trips, setTrips] = useState(initialTrips);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | Trip["status"]>("All");
   const [isCreating, setIsCreating] = useState(false);
@@ -94,6 +98,27 @@ export default function Home() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [deletingTrip, setDeletingTrip] = useState<Trip | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [pendingAction, setPendingAction] = useState<"create" | "delete" | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/trips", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await apiError(response));
+        return response.json() as Promise<ApiTrip[]>;
+      })
+      .then((savedTrips) => setTrips(savedTrips.map(toTrip)))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        const message = error instanceof Error ? error.message : "Could not load trips";
+        setLoadError(message);
+        setNotice(message);
+      })
+      .finally(() => setIsLoading(false));
+    return () => controller.abort();
+  }, []);
 
   const visibleTrips = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -140,35 +165,53 @@ export default function Home() {
     reader.readAsDataURL(file);
   }
 
-  function deleteTrip() {
+  async function deleteTrip() {
     if (!deletingTrip) return;
-    setTrips((current) => current.filter((trip) => trip.id !== deletingTrip.id));
-    setNotice(`${deletingTrip.title} was deleted`);
-    setDeletingTrip(null);
-    window.setTimeout(() => setNotice(""), 2400);
+    setPendingAction("delete");
+    try {
+      const response = await fetch(`/api/trips/${deletingTrip.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error(await apiError(response));
+      setTrips((current) => current.filter((trip) => trip.id !== deletingTrip.id));
+      setNotice(`${deletingTrip.title} was deleted`);
+      setDeletingTrip(null);
+      window.setTimeout(() => setNotice(""), 2400);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not delete trip");
+    } finally {
+      setPendingAction(null);
+    }
   }
 
-  function createTrip(event: FormEvent<HTMLFormElement>) {
+  async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const title = String(form.get("title") || "Untitled trip").trim();
-    const destination = String(form.get("destination") || "Destination to be decided").trim();
-    const id = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "new-trip"}-${Date.now().toString().slice(-4)}`;
-    setTrips((current) => [{
-      id,
-      title,
-      destination,
-      dates: "Dates to be decided",
-      duration: "New trip",
-      status: "Planning",
-      people: ["UL"],
-      liked: false,
-    }, ...current]);
-    setActiveFilter("All");
-    setQuery("");
-    setIsCreating(false);
-    setNotice(`${title} was added`);
-    window.setTimeout(() => setNotice(""), 2400);
+    const payload = {
+      name: String(form.get("title") || "").trim(),
+      destination: String(form.get("destination") || "").trim(),
+      startDate: String(form.get("startDate") || ""),
+      endDate: String(form.get("endDate") || ""),
+    };
+    setPendingAction("create");
+    try {
+      const response = await fetch("/api/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(await apiError(response));
+      const created = toTrip(await response.json() as ApiTrip);
+      setLoadError("");
+      setTrips((current) => [created, ...current]);
+      setActiveFilter("All");
+      setQuery("");
+      setIsCreating(false);
+      setNotice(`${created.title} was added`);
+      window.setTimeout(() => setNotice(""), 2400);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not create trip");
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   return (
@@ -213,7 +256,11 @@ export default function Home() {
           </div>
         </div>
 
-        {visibleTrips.length ? (
+        {isLoading ? (
+          <div className="trips-empty" role="status"><span className="trip-loading-spinner" /><h2>Loading trips</h2><p>Connecting to the TripMate API…</p></div>
+        ) : loadError ? (
+          <div className="trips-empty"><SearchIcon /><h2>Could not load trips</h2><p>{loadError}</p></div>
+        ) : visibleTrips.length ? (
           <div className="trip-card-grid">
             {visibleTrips.map((trip) => (
               <article className="trip-card" key={trip.id}>
@@ -253,7 +300,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div className="trips-empty"><SearchIcon /><h2>No trips found</h2><p>Try another destination or change the selected filter.</p></div>
+          <div className="trips-empty"><SearchIcon /><h2>{trips.length ? "No trips found" : "No trips yet"}</h2><p>{trips.length ? "Try another destination or change the selected filter." : "Create your first trip to start planning."}</p></div>
         )}
       </section>
 
@@ -263,11 +310,15 @@ export default function Home() {
             <button className="trip-dialog-close" type="button" aria-label="Close" onClick={() => setIsCreating(false)}>×</button>
             <p className="trips-eyebrow"><span /> NEW ADVENTURE</p>
             <h2 id="new-trip-title">Where to next?</h2>
-            <p className="trip-dialog-intro">Give the trip a name. You can add dates, stops, and people in the workspace.</p>
+            <p className="trip-dialog-intro">Add the essentials now. You can add stops and people in the workspace.</p>
             <form onSubmit={createTrip}>
               <label>TRIP NAME<input name="title" placeholder="Summer in Italy" required autoFocus /></label>
               <label>DESTINATION<input name="destination" placeholder="Rome, Italy" required /></label>
-              <div className="trip-dialog-actions"><button type="button" onClick={() => setIsCreating(false)}>Cancel</button><button type="submit">Create trip <ArrowIcon /></button></div>
+              <div className="trip-date-fields">
+                <label>START DATE<input name="startDate" type="date" required /></label>
+                <label>END DATE<input name="endDate" type="date" required /></label>
+              </div>
+              <div className="trip-dialog-actions"><button type="button" disabled={pendingAction === "create"} onClick={() => setIsCreating(false)}>Cancel</button><button type="submit" disabled={pendingAction === "create"}>{pendingAction === "create" ? "Creating…" : "Create trip"} <ArrowIcon /></button></div>
             </form>
           </section>
         </div>
@@ -294,7 +345,7 @@ export default function Home() {
             <p className="trips-eyebrow"><span /> DELETE TRIP</p>
             <h2 id="delete-trip-title">Delete {deletingTrip.title}?</h2>
             <p className="trip-dialog-intro" id="delete-trip-description">This removes the trip from your home page. This action cannot be undone.</p>
-            <div className="trip-dialog-actions trip-delete-actions"><button type="button" onClick={() => setDeletingTrip(null)}>Keep trip</button><button type="button" onClick={deleteTrip}>Delete trip</button></div>
+            <div className="trip-dialog-actions trip-delete-actions"><button type="button" disabled={pendingAction === "delete"} onClick={() => setDeletingTrip(null)}>Keep trip</button><button type="button" disabled={pendingAction === "delete"} onClick={deleteTrip}>{pendingAction === "delete" ? "Deleting…" : "Delete trip"}</button></div>
           </section>
         </div>
       )}
