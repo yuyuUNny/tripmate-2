@@ -74,6 +74,7 @@ type WorkspaceContextValue = WorkspaceState & {
   moveDestination: (id: string, direction: -1 | 1) => void;
   setTravelMode: (fromId: string, toId: string, mode: TravelLeg["mode"]) => void;
   addStop: (stop: Omit<ItineraryStop, "id">) => void;
+  updateStop: (id: string, stop: Omit<ItineraryStop, "id">) => void;
   removeStop: (id: string) => void;
   addExpense: (expense: Omit<Expense, "id">) => void;
   removeExpense: (id: string) => void;
@@ -187,6 +188,10 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
       travelLegs: current.travelLegs.map((leg) => leg.fromDestinationId === fromId && leg.toDestinationId === toId ? { ...leg, mode } : leg),
     })),
     addStop: (stop) => setState((current) => ({ ...current, stops: [...current.stops, { ...stop, id: crypto.randomUUID() }] })),
+    updateStop: (id, stop) => setState((current) => ({
+      ...current,
+      stops: current.stops.map((item) => item.id === id ? { ...stop, id } : item),
+    })),
     removeStop: (id) => setState((current) => ({ ...current, stops: current.stops.filter((stop) => stop.id !== id) })),
     addExpense: (expense) => setState((current) => ({ ...current, expenses: [...current.expenses, { ...expense, id: crypto.randomUUID() }] })),
     removeExpense: (id) => setState((current) => ({ ...current, expenses: current.expenses.filter((expense) => expense.id !== id) })),

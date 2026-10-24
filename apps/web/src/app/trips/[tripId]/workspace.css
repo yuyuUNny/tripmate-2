@@ -361,16 +361,29 @@
 .tmw-date-strip button.active { color: white; background: var(--ink); border-color: var(--ink); }
 .tmw-itinerary-heading { display: flex; align-items: flex-end; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid #e7e0d5; }
 .tmw-itinerary-heading p, .tmw-itinerary-heading h2 { margin: 0; }.tmw-itinerary-heading p { color: var(--coral); font: 800 9px monospace; letter-spacing: .15em; }.tmw-itinerary-heading h2 { margin-top: 6px; font: 23px Georgia, serif; }.tmw-itinerary-heading small { color: #84908a; font-size: 9px; }
-.tmw-city-stop-list { min-height: 310px; padding: 5px 24px; }
+.tmw-city-stop-list { padding: 5px 24px; }
+.tmw-city-stop-list:empty { padding: 0; }
 .tmw-city-stop-list article { display: grid; grid-template-columns: 48px 28px minmax(0, 1fr) 32px; gap: 9px; align-items: center; min-height: 74px; padding-inline: 9px; border-bottom: 1px solid #ece6dc; }
+.tmw-city-stop-list article:last-child { border-bottom: 0; }
 .tmw-city-stop-list time { color: #6f7a74; font: 10px monospace; }
 .tmw-stop-number { display: grid; place-items: center; width: 25px; height: 25px; color: white; background: var(--teal); border-radius: 50%; font: 800 9px monospace; }
 .tmw-city-stop-list strong, .tmw-city-stop-list small { display: block; }.tmw-city-stop-list strong { font: 16px Georgia, serif; }.tmw-city-stop-list small { margin-top: 5px; color: #7c8680; font-size: 10px; }
-.tmw-quick-add { display: grid; grid-template-columns: 120px 85px minmax(130px, 1fr) minmax(120px, .8fr) auto; gap: 8px; align-items: end; padding: 20px 24px 24px; background: #f7f1e7; border-top: 1px solid var(--line); }
-.tmw-quick-add h3 { margin: 5px 0 4px; font: 18px Georgia, serif; }.tmw-quick-add label { display: grid; gap: 6px; color: #59655f; font-size: 8px; font-weight: 800; }.tmw-quick-add input { width: 100%; min-width: 0; min-height: 40px; padding: 0 9px; color: var(--ink); background: #fffdf8; border: 1px solid #d7cfc1; border-radius: 3px; }
+.tmw-stop-title { display: flex; align-items: center; gap: 5px; }
+.tmw-edit-stop { display: grid; flex: 0 0 auto; place-items: center; width: 24px; height: 24px; padding: 0; color: #8b8379; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.tmw-edit-stop:hover { color: var(--coral); background: #f8e9e4; }
+.tmw-edit-stop:focus-visible { outline: 3px solid #f5a995; outline-offset: 1px; }
+.tmw-edit-stop svg { width: 13px; height: 13px; }
+.tmw-quick-add { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 14px 12px; align-items: end; padding: 22px 32px 26px; background: #f7f1e7; }
+.tmw-quick-add-heading { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 4px; border-bottom: 1px solid #ded5c7; }
+.tmw-quick-add h3 { margin: 0 0 8px; font: 22px Georgia, serif; }.tmw-quick-add label { display: grid; gap: 7px; color: #59655f; font-size: 9px; font-weight: 800; }.tmw-quick-add input { width: 100%; min-width: 0; min-height: 44px; padding: 0 11px; color: var(--ink); background: #fffdf8; border: 1px solid #d7cfc1; border-radius: 3px; }
 .tmw-stop-place-field { position: relative; min-width: 0; }
 .tmw-stop-place-results { top: calc(100% + 5px); }
 .tmw-stop-place-message { position: absolute; z-index: 2; top: calc(100% + 4px); left: 2px; right: 2px; overflow: hidden; color: #7b8580; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.tmw-stop-note { grid-column: 1 / -1; }
+.tmw-stop-form-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.tmw-stop-form-actions .tmw-primary-button { min-width: 124px; }
+.tmw-stop-form-actions .tmw-text-button { min-height: 40px; padding: 0 12px; color: #68736d; background: transparent; border: 0; font-weight: 800; cursor: pointer; }
+.tmw-stop-form-actions .tmw-text-button:hover { color: var(--ink); }
 
 .tmw-local-map { position: sticky; top: 0; align-self: start; min-width: 0; background: #e8e4d7; }
 .tmw-local-map-top { display: flex; justify-content: space-between; align-items: center; height: 76px; padding: 0 22px; background: #f9f5eddd; border-bottom: 1px solid var(--line); }
@@ -385,8 +398,7 @@
   .tmw-add-destination form { grid-template-columns: 1fr 1fr; }
   .tmw-place-search-field { grid-column: 1 / -1; }
   .tmw-city-workspace { grid-template-columns: minmax(390px, .95fr) minmax(400px, 1.05fr); }
-  .tmw-quick-add { grid-template-columns: 1fr 1fr; }
-  .tmw-quick-add > div { grid-column: 1 / -1; }
+  .tmw-quick-add { grid-template-columns: 100px minmax(0, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -431,6 +443,8 @@
   .tmw-map-surface { min-height: 330px; }
   .tmw-local-leaflet-map, .tmw-local-map .tmw-map-loading { height: 330px; min-height: 330px; }
   .tmw-city-stop-list { padding-inline: 12px; }.tmw-city-stop-list article { grid-template-columns: 42px 26px minmax(0, 1fr) 30px; gap: 6px; }
-  .tmw-quick-add { grid-template-columns: 1fr; padding-inline: 17px; }.tmw-quick-add > div { grid-column: auto; }
+  .tmw-quick-add { grid-template-columns: 1fr; padding-inline: 17px; }
+  .tmw-quick-add-heading, .tmw-stop-note, .tmw-stop-form-actions { grid-column: auto; }
+  .tmw-quick-add-heading { display: block; }
   .tmw-route-summary div { padding-inline: 12px; }
 }

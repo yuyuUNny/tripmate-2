@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { PlusIcon, TrashIcon } from "../../_components/icons";
+import { PencilIcon, PlusIcon, TrashIcon } from "../../_components/icons";
 import { formatShortDate, tripDays, useWorkspace } from "../../workspace-context";
 
 type PlaceResult = {
@@ -26,7 +26,7 @@ function dayLabel(value: string) {
 }
 
 export function DestinationPlanner({ destinationId }: { destinationId: string }) {
-  const { destinations, stops, addStop, removeStop } = useWorkspace();
+  const { destinations, stops, addStop, updateStop, removeStop } = useWorkspace();
   const destination = destinations.find((item) => item.id === destinationId);
   const days = useMemo(() => destination ? tripDays(destination.arrivalDate, destination.departureDate) : [], [destination]);
   const [selectedDay, setSelectedDay] = useState(days[0] ?? "");
@@ -36,6 +36,7 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [placeSearchMessage, setPlaceSearchMessage] = useState("");
+  const [editingStopId, setEditingStopId] = useState<string | null>(null);
   const activeDay = days.includes(selectedDay) ? selectedDay : (days[0] ?? "");
 
   const dayStops = useMemo(() => stops
@@ -44,7 +45,8 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
 
   useEffect(() => {
     const query = title.trim();
-    if (selectedPlace || query.length < 2 || !destination) return;
+    const editingStop = stops.find((stop) => stop.id === editingStopId);
+    if (selectedPlace || query.length < 2 || !destination || query === editingStop?.title) return;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
@@ -72,7 +74,7 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [destination, selectedPlace, title]);
+  }, [destination, editingStopId, selectedPlace, stops, title]);
 
   if (!destination) {
     return <div className="tmw-page"><div className="tmw-empty"><h1>Destination not found</h1><p>Return to the overview and choose another city.</p></div></div>;
@@ -81,21 +83,46 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   function submitStop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim() || !activeDay) return;
-    addStop({
+    const editingStop = stops.find((stop) => stop.id === editingStopId);
+    const stop = {
       destinationId,
       day: activeDay,
       time,
       title: selectedPlace?.city ?? title.trim(),
       detail: detail.trim() || selectedPlace?.formattedName || "New activity",
-      formattedName: selectedPlace?.formattedName,
-      latitude: selectedPlace?.latitude,
-      longitude: selectedPlace?.longitude,
-    });
+      formattedName: selectedPlace?.formattedName ?? (title.trim() === editingStop?.title ? editingStop.formattedName : undefined),
+      latitude: selectedPlace?.latitude ?? (title.trim() === editingStop?.title ? editingStop.latitude : undefined),
+      longitude: selectedPlace?.longitude ?? (title.trim() === editingStop?.title ? editingStop.longitude : undefined),
+    };
+    if (editingStopId) updateStop(editingStopId, stop);
+    else addStop(stop);
+    resetForm();
+  }
+
+  function resetForm() {
     setTitle("");
     setDetail("");
     setSelectedPlace(null);
     setPlaceResults([]);
     setPlaceSearchMessage("");
+    setEditingStopId(null);
+  }
+
+  function editStop(stopId: string) {
+    const stop = stops.find((item) => item.id === stopId);
+    if (!stop) return;
+    setEditingStopId(stop.id);
+    setTime(stop.time);
+    setTitle(stop.title);
+    setDetail(stop.detail);
+    setSelectedPlace(null);
+    setPlaceResults([]);
+    setPlaceSearchMessage("");
+  }
+
+  function deleteStop(stopId: string) {
+    removeStop(stopId);
+    if (editingStopId === stopId) resetForm();
   }
 
   function choosePlace(place: PlaceResult) {
@@ -115,29 +142,31 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
       <div className="tmw-city-workspace">
         <section className="tmw-itinerary-pane" aria-labelledby="itinerary-heading">
           <div className="tmw-date-strip" aria-label={`${destination.city} dates`}>
-            {days.map((day) => <button key={day} type="button" className={day === activeDay ? "active" : ""} onClick={() => setSelectedDay(day)}><span>{dayLabel(day).split(" ")[0]}</span><strong>{dayLabel(day).split(" ")[1]}</strong></button>)}
+            {days.map((day) => <button key={day} type="button" className={day === activeDay ? "active" : ""} onClick={() => { setSelectedDay(day); resetForm(); }}><span>{dayLabel(day).split(" ")[0]}</span><strong>{dayLabel(day).split(" ")[1]}</strong></button>)}
           </div>
           <div className="tmw-itinerary-heading"><div><p>DAILY ROUTE</p><h2 id="itinerary-heading">{dayStops.length ? `${dayStops.length} planned stops` : "A free day"}</h2></div><small>Ordered by time</small></div>
 
           <div className="tmw-city-stop-list">
-            {dayStops.length === 0 && <div className="tmw-empty"><span>＋</span><h3>Nothing scheduled yet</h3><p>Add a place below to begin this route.</p></div>}
             {dayStops.map((stop, index) => (
               <article key={stop.id}>
-                <time>{stop.time}</time><span className="tmw-stop-number">{index + 1}</span><div><strong>{stop.title}</strong><small>{stop.detail}</small></div><button type="button" className="tmw-icon-button" onClick={() => removeStop(stop.id)} aria-label={`Remove ${stop.title}`}><TrashIcon/></button>
+                <time>{stop.time}</time><span className="tmw-stop-number">{index + 1}</span><div><div className="tmw-stop-title"><strong>{stop.title}</strong><button type="button" className="tmw-edit-stop" onClick={() => editStop(stop.id)} aria-label={`Edit ${stop.title}`}><PencilIcon/></button></div><small>{stop.detail}</small></div><button type="button" className="tmw-icon-button" onClick={() => deleteStop(stop.id)} aria-label={`Remove ${stop.title}`}><TrashIcon/></button>
               </article>
             ))}
           </div>
 
           <form className="tmw-quick-add" onSubmit={submitStop}>
-            <div><p className="tmw-panel-label">ADD TO {dayLabel(activeDay).toUpperCase()}</p><h3>New place</h3></div>
+            <div className="tmw-quick-add-heading"><p className="tmw-panel-label">{editingStopId ? "EDIT" : "ADD TO"} {dayLabel(activeDay).toUpperCase()}</p><h3>{editingStopId ? "Edit place" : "New place"}</h3></div>
             <label>Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} required /></label>
             <div className="tmw-stop-place-field">
               <label>Place<input value={title} onChange={(event) => { setTitle(event.target.value); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchMessage(""); }} placeholder={`Search places in ${destination.city}`} maxLength={160} role="combobox" aria-autocomplete="list" aria-controls="place-suggestions" aria-expanded={placeResults.length > 0} required /></label>
               {placeResults.length > 0 && <div id="place-suggestions" className="tmw-place-results tmw-stop-place-results" role="listbox" aria-label={`Places near ${destination.city}`}>{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{place.formattedName}</small></span><b>{place.countryCode}</b></button>)}</div>}
               {placeSearchMessage && <small className="tmw-stop-place-message">{placeSearchMessage}</small>}
             </div>
-            <label>Note<input value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="What will you do?" maxLength={100} /></label>
-            <button className="tmw-primary-button" type="submit"><PlusIcon/> Add</button>
+            <label className="tmw-stop-note">Note<input value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="What will you do?" maxLength={100} /></label>
+            <div className="tmw-stop-form-actions">
+              {editingStopId && <button className="tmw-text-button" type="button" onClick={resetForm}>Cancel</button>}
+              <button className="tmw-primary-button" type="submit">{editingStopId ? <PencilIcon/> : <PlusIcon/>} {editingStopId ? "Save changes" : "Add place"}</button>
+            </div>
           </form>
         </section>
 

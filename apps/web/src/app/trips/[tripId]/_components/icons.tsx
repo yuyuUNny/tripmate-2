@@ -28,6 +28,10 @@ export function TrashIcon(props: IconProps) {
   return <Icon {...props}><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></Icon>;
 }
 
+export function PencilIcon(props: IconProps) {
+  return <Icon {...props}><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 7.5 3 3"/></Icon>;
+}
+
 export function ArrowIcon(props: IconProps) {
   return <Icon {...props}><path d="m15 18-6-6 6-6"/></Icon>;
 }
