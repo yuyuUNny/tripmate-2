@@ -23,7 +23,7 @@ class TripApiIntegrationTest {
     void createsTripAndAddsAnItineraryItem() throws Exception {
         var start = LocalDate.now().plusDays(10);
         var body = """
-                {"name":"Toronto weekend","destination":"Toronto, Canada","startDate":"%s","endDate":"%s"}
+                {"name":"Toronto weekend","startDate":"%s","endDate":"%s"}
                 """.formatted(start, start.plusDays(2));
         var created = mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andExpect(header().string("Location", matchesPattern("/api/trips/.+")))
@@ -41,28 +41,29 @@ class TripApiIntegrationTest {
     void rejectsAnInvalidTripDateRange() throws Exception {
         var start = LocalDate.now().plusDays(10);
         var body = """
-                {"name":"Invalid trip","destination":"Toronto","startDate":"%s","endDate":"%s"}
+                {"name":"Invalid trip","startDate":"%s","endDate":"%s"}
                 """.formatted(start, start.minusDays(1));
         mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code", is("invalid_trip")));
     }
     @Test
-    void createsPastTripWithoutAnInitialDestination() throws Exception {
+    void createsPastSingleDayTripWithoutAnInitialDestination() throws Exception {
         var start = LocalDate.now().minusDays(10);
         var body = """
                 {"name":"Previous adventure","startDate":"%s","endDate":"%s"}
-                """.formatted(start, start.plusDays(2));
+                """.formatted(start, start);
         mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name", is("Previous adventure")))
                 .andExpect(jsonPath("$.destination", is("")))
-                .andExpect(jsonPath("$.startDate", is(start.toString())));
+                .andExpect(jsonPath("$.startDate", is(start.toString())))
+                .andExpect(jsonPath("$.endDate", is(start.toString())));
     }
     @Test
     void listsAndDeletesTrips() throws Exception {
         var start = LocalDate.now().plusDays(20);
         var body = """
-                {"name":"Trip to remove","destination":"Montreal","startDate":"%s","endDate":"%s"}
+                {"name":"Trip to remove","startDate":"%s","endDate":"%s"}
                 """.formatted(start, start.plusDays(3));
         var created = mvc.perform(post("/api/trips").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andReturn();

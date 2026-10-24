@@ -27,6 +27,9 @@ export type ItineraryStop = {
   time: string;
   title: string;
   detail: string;
+  formattedName?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type Expense = {
@@ -66,6 +69,8 @@ type TripDetails = {
 type WorkspaceContextValue = WorkspaceState & {
   trip: TripDetails | null;
   addDestination: (destination: Omit<Destination, "id">) => void;
+  updateDestinationDates: (id: string, arrivalDate: string, departureDate: string) => void;
+  removeDestination: (id: string) => void;
   moveDestination: (id: string, direction: -1 | 1) => void;
   setTravelMode: (fromId: string, toId: string, mode: TravelLeg["mode"]) => void;
   addStop: (stop: Omit<ItineraryStop, "id">) => void;
@@ -144,6 +149,24 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
         ...current,
         destinations: [...current.destinations, { ...destination, id }],
         travelLegs: previous ? [...current.travelLegs, { id: crypto.randomUUID(), fromDestinationId: previous.id, toDestinationId: id, mode: "Train" }] : current.travelLegs,
+      };
+    }),
+    updateDestinationDates: (id, arrivalDate, departureDate) => setState((current) => ({
+      ...current,
+      destinations: current.destinations.map((destination) => destination.id === id ? { ...destination, arrivalDate, departureDate } : destination),
+    })),
+    removeDestination: (id) => setState((current) => {
+      const destinations = current.destinations.filter((destination) => destination.id !== id);
+      const travelLegs = destinations.slice(0, -1).map((destination, index) => {
+        const next = destinations[index + 1];
+        const existing = current.travelLegs.find((leg) => leg.fromDestinationId === destination.id && leg.toDestinationId === next.id);
+        return existing ?? { id: crypto.randomUUID(), fromDestinationId: destination.id, toDestinationId: next.id, mode: "Train" as const };
+      });
+      return {
+        ...current,
+        destinations,
+        travelLegs,
+        stops: current.stops.filter((stop) => stop.destinationId !== id),
       };
     }),
     moveDestination: (id, direction) => setState((current) => {

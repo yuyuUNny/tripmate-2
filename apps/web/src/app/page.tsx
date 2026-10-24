@@ -103,6 +103,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [pendingAction, setPendingAction] = useState<"create" | "delete" | null>(null);
+  const [createStartDate, setCreateStartDate] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -236,7 +237,7 @@ export default function Home() {
             <h1 id="trips-title">All trips</h1>
             <p>Pick up where you left off, or start planning somewhere new.</p>
           </div>
-          <button className="trips-new-button" type="button" onClick={() => setIsCreating(true)}>
+          <button className="trips-new-button" type="button" onClick={() => { setCreateStartDate(""); setIsCreating(true); }}>
             <PlusIcon /> New trip
           </button>
         </div>
@@ -314,8 +315,8 @@ export default function Home() {
             <form onSubmit={createTrip}>
               <label>TRIP NAME<input name="title" placeholder="Summer adventure" required autoFocus /></label>
               <div className="trip-date-fields">
-                <label>START DATE<input name="startDate" type="date" required /></label>
-                <label>END DATE<input name="endDate" type="date" required /></label>
+                <label>START DATE<input name="startDate" type="date" value={createStartDate} onChange={(event) => setCreateStartDate(event.target.value)} required /></label>
+                <label>END DATE<input name="endDate" type="date" min={createStartDate || undefined} required /></label>
               </div>
               <div className="trip-dialog-actions"><button type="button" disabled={pendingAction === "create"} onClick={() => setIsCreating(false)}>Cancel</button><button type="submit" disabled={pendingAction === "create"}>{pendingAction === "create" ? "Creating…" : "Create trip"} <ArrowIcon /></button></div>
             </form>

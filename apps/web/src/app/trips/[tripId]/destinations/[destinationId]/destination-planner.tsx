@@ -1,8 +1,25 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PlusIcon, TrashIcon } from "../../_components/icons";
 import { formatShortDate, tripDays, useWorkspace } from "../../workspace-context";
+
+type PlaceResult = {
+  id: string;
+  city: string;
+  region: string;
+  country: string;
+  countryCode: string;
+  formattedName: string;
+  latitude: number;
+  longitude: number;
+};
+
+const LocalMap = dynamic(() => import("../../_components/local-map"), {
+  ssr: false,
+  loading: () => <div className="tmw-map-loading" role="status">Loading city map…</div>,
+});
 
 function dayLabel(value: string) {
   return new Intl.DateTimeFormat("en-CA", { weekday: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
@@ -16,11 +33,46 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("09:00");
   const [detail, setDetail] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
+  const [placeSearchMessage, setPlaceSearchMessage] = useState("");
   const activeDay = days.includes(selectedDay) ? selectedDay : (days[0] ?? "");
 
   const dayStops = useMemo(() => stops
     .filter((stop) => stop.destinationId === destinationId && stop.day === activeDay)
     .sort((a, b) => a.time.localeCompare(b.time)), [activeDay, destinationId, stops]);
+
+  useEffect(() => {
+    const query = title.trim();
+    if (selectedPlace || query.length < 2 || !destination) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          scope: "place",
+          q: query,
+          city: destination.city,
+          lat: String(destination.latitude),
+          lon: String(destination.longitude),
+        });
+        const response = await fetch(`/geocoding?${params}`, { signal: controller.signal });
+        const body = await response.json() as { places?: PlaceResult[]; message?: string };
+        if (!response.ok) throw new Error(body.message || "Could not search for that place.");
+        const places = body.places ?? [];
+        setPlaceResults(places);
+        setPlaceSearchMessage(places.length ? "" : `No matching places found near ${destination.city}.`);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setPlaceSearchMessage(error instanceof Error ? error.message : "Place search is unavailable.");
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [destination, selectedPlace, title]);
 
   if (!destination) {
     return <div className="tmw-page"><div className="tmw-empty"><h1>Destination not found</h1><p>Return to the overview and choose another city.</p></div></div>;
@@ -29,9 +81,28 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   function submitStop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim() || !activeDay) return;
-    addStop({ destinationId, day: activeDay, time, title: title.trim(), detail: detail.trim() || "New activity" });
+    addStop({
+      destinationId,
+      day: activeDay,
+      time,
+      title: selectedPlace?.city ?? title.trim(),
+      detail: detail.trim() || selectedPlace?.formattedName || "New activity",
+      formattedName: selectedPlace?.formattedName,
+      latitude: selectedPlace?.latitude,
+      longitude: selectedPlace?.longitude,
+    });
     setTitle("");
     setDetail("");
+    setSelectedPlace(null);
+    setPlaceResults([]);
+    setPlaceSearchMessage("");
+  }
+
+  function choosePlace(place: PlaceResult) {
+    setSelectedPlace(place);
+    setTitle(place.city);
+    setPlaceResults([]);
+    setPlaceSearchMessage("");
   }
 
   return (
@@ -60,15 +131,19 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
           <form className="tmw-quick-add" onSubmit={submitStop}>
             <div><p className="tmw-panel-label">ADD TO {dayLabel(activeDay).toUpperCase()}</p><h3>New place</h3></div>
             <label>Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} required /></label>
-            <label>Place<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Search or enter a place" maxLength={160} required /></label>
+            <div className="tmw-stop-place-field">
+              <label>Place<input value={title} onChange={(event) => { setTitle(event.target.value); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchMessage(""); }} placeholder={`Search places in ${destination.city}`} maxLength={160} role="combobox" aria-autocomplete="list" aria-controls="place-suggestions" aria-expanded={placeResults.length > 0} required /></label>
+              {placeResults.length > 0 && <div id="place-suggestions" className="tmw-place-results tmw-stop-place-results" role="listbox" aria-label={`Places near ${destination.city}`}>{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{place.formattedName}</small></span><b>{place.countryCode}</b></button>)}</div>}
+              {placeSearchMessage && <small className="tmw-stop-place-message">{placeSearchMessage}</small>}
+            </div>
             <label>Note<input value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="What will you do?" maxLength={100} /></label>
             <button className="tmw-primary-button" type="submit"><PlusIcon/> Add</button>
           </form>
         </section>
 
-        <aside className="tmw-local-map" aria-label={`Reserved map area for ${destination.city}`}>
+        <aside className="tmw-local-map" aria-label={`Map of ${destination.city}`}>
           <div className="tmw-local-map-top"><div><span>DAY MAP</span><strong>{destination.city}</strong></div></div>
-          <div className="tmw-map-surface tmw-map-surface-empty" />
+          <LocalMap destination={destination} stops={dayStops} />
         </aside>
       </div>
     </div>
