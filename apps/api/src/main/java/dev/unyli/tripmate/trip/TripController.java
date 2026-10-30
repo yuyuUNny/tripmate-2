@@ -34,6 +34,11 @@ public class TripController {
         trips.delete(tripId, jwt.getSubject());
         return ResponseEntity.noContent().build();
     }
+    @PatchMapping("/{tripId}/dates")
+    @PreAuthorize("hasAuthority('SCOPE_write:trips')")
+    public TripResponse updateDates(@PathVariable UUID tripId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateTripDatesRequest request) {
+        return trips.updateDates(tripId, jwt.getSubject(), request);
+    }
     @PostMapping("/{tripId}/itinerary-items")
     @PreAuthorize("hasAuthority('SCOPE_write:trips')")
     public ResponseEntity<TripResponse> addItem(@PathVariable UUID tripId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AddItineraryItemRequest request) {

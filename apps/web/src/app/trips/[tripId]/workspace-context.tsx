@@ -153,10 +153,24 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
         travelLegs: previous ? [...current.travelLegs, { id: crypto.randomUUID(), fromDestinationId: previous.id, toDestinationId: id, mode: "Train" }] : current.travelLegs,
       };
     }),
-    updateDestinationDates: (id, arrivalDate, departureDate) => setState((current) => ({
-      ...current,
-      destinations: current.destinations.map((destination) => destination.id === id ? { ...destination, arrivalDate, departureDate } : destination),
-    })),
+    updateDestinationDates: (id, arrivalDate, departureDate) => {
+      const destinations = state.destinations.map((destination) => destination.id === id ? { ...destination, arrivalDate, departureDate } : destination);
+      setState((current) => ({ ...current, destinations }));
+
+      const startDate = destinations[0]?.arrivalDate;
+      const endDate = destinations.at(-1)?.departureDate;
+      if (!startDate || !endDate) return;
+
+      setTrip((current) => current ? { ...current, startDate, endDate } : current);
+      void authFetch(`/api/trips/${tripId}/dates`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate, endDate }),
+      })
+        .then((response) => response.ok ? response.json() as Promise<TripDetails> : null)
+        .then((savedTrip) => { if (savedTrip) setTrip(savedTrip); })
+        .catch(() => { /* Keep the optimistic workspace dates when the API is temporarily unavailable. */ });
+    },
     removeDestination: (id) => setState((current) => {
       const destinations = current.destinations.filter((destination) => destination.id !== id);
       const travelLegs = destinations.slice(0, -1).map((destination, index) => {
@@ -204,7 +218,7 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
       ...current,
       members: current.members.map((member) => member.id === id ? { ...member, role } : member),
     })),
-  }), [state, trip]);
+  }), [state, trip, tripId]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

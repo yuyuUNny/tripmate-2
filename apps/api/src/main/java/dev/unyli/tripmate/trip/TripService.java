@@ -45,6 +45,14 @@ public class TripService {
         trips.delete(findTrip(tripId));
     }
     @Transactional
+    public TripResponse updateDates(UUID tripId, String subject, UpdateTripDatesRequest request) {
+        if (request.endDate().isBefore(request.startDate())) throw new InvalidTripException("endDate must be on or after startDate");
+        var membership = access.requireMembership(tripId, subject, TripRole.OWNER, TripRole.EDITOR);
+        var trip = findTrip(tripId);
+        trip.updateDates(request.startDate(), request.endDate());
+        return TripResponse.from(trips.save(trip), membership.getRole());
+    }
+    @Transactional
     public TripResponse addItineraryItem(UUID tripId, String subject, AddItineraryItemRequest request) {
         if (!request.endAt().isAfter(request.startAt())) throw new InvalidTripException("endAt must be after startAt");
         var membership = access.requireMembership(tripId, subject, TripRole.OWNER, TripRole.EDITOR);

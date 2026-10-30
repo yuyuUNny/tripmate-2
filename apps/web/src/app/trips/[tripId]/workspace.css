@@ -357,7 +357,11 @@
 .tmw-city-header > div > p:last-child { margin: 0; color: #6b7771; font-size: 12px; }
 .tmw-city-workspace { display: grid; grid-template-columns: minmax(450px, .95fr) minmax(480px, 1.05fr); max-width: 1450px; min-height: 690px; margin: auto; border: 1px solid var(--line); background: #fffefa; box-shadow: 10px 11px 0 #173e3609; }
 .tmw-itinerary-pane { min-width: 0; border-right: 1px solid var(--line); }
-.tmw-date-strip { display: flex; min-height: 76px; padding: 12px 20px; gap: 8px; overflow-x: auto; background: #f4efe6; border-bottom: 1px solid var(--line); }
+.tmw-date-strip { display: flex; min-height: 86px; padding: 12px 20px 8px; gap: 8px; overflow-x: scroll; background: #f4efe6; border-bottom: 1px solid var(--line); scrollbar-color: var(--teal) #ddd5c8; scrollbar-width: auto; }
+.tmw-date-strip::-webkit-scrollbar { height: 10px; }
+.tmw-date-strip::-webkit-scrollbar-track { background: #ddd5c8; border-radius: 999px; }
+.tmw-date-strip::-webkit-scrollbar-thumb { background: var(--teal); border: 2px solid #ddd5c8; border-radius: 999px; }
+.tmw-date-strip::-webkit-scrollbar-thumb:hover { background: var(--ink); }
 .tmw-date-strip button { min-width: 62px; color: #758079; background: transparent; border: 1px solid transparent; border-radius: 3px; cursor: pointer; }
 .tmw-date-strip span, .tmw-date-strip strong { display: block; }.tmw-date-strip span { font-size: 9px; text-transform: uppercase; }.tmw-date-strip strong { margin-top: 3px; font: 21px Georgia, serif; }
 .tmw-date-strip button.active { color: white; background: var(--ink); border-color: var(--ink); }

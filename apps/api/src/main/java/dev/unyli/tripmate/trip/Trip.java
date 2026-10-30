@@ -31,6 +31,10 @@ public class Trip {
         this.createdAt = Instant.now();
     }
     public void addItineraryItem(ItineraryItem item) { itineraryItems.add(item); item.attachTo(this); }
+    public void updateDates(LocalDate startDate, LocalDate endDate) {
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
     public UUID getId() { return id; }
     public String getName() { return name; }
     public String getDestination() { return destination; }

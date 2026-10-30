@@ -11,6 +11,9 @@ final class TripDtos {
             @NotBlank @Size(max = 120) String name,
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate) {}
+    record UpdateTripDatesRequest(
+            @NotNull LocalDate startDate,
+            @NotNull LocalDate endDate) {}
     record AddItineraryItemRequest(
             @NotBlank @Size(max = 160) String title,
             @NotNull OffsetDateTime startAt,

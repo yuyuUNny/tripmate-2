@@ -54,6 +54,22 @@ class TripApiIntegrationTest {
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code", is("invalid_trip")));
     }
     @Test
+    void updatesTripDatesShownByTheTripList() throws Exception {
+        var tripId = createTrip(OWNER, "Rescheduled trip");
+
+        mvc.perform(patch("/api/trips/{id}/dates", tripId).with(scopes(OWNER, "write:trips"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"startDate\":\"2030-02-10\",\"endDate\":\"2030-02-18\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.startDate", is("2030-02-10")))
+                .andExpect(jsonPath("$.endDate", is("2030-02-18")));
+
+        mvc.perform(get("/api/trips").with(scopes(OWNER, "read:trips")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == '%s')].startDate".formatted(tripId), contains("2030-02-10")))
+                .andExpect(jsonPath("$[?(@.id == '%s')].endDate".formatted(tripId), contains("2030-02-18")));
+    }
+    @Test
     void createsPastSingleDayTripWithoutAnInitialDestination() throws Exception {
         var start = LocalDate.now().minusDays(10);
         var body = """
