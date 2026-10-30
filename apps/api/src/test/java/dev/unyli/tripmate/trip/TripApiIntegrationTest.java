@@ -70,6 +70,21 @@ class TripApiIntegrationTest {
                 .andExpect(jsonPath("$[?(@.id == '%s')].endDate".formatted(tripId), contains("2030-02-18")));
     }
     @Test
+    void savesTripCoverShownAfterReload() throws Exception {
+        var tripId = createTrip(OWNER, "Covered trip");
+        var cover = "data:image/jpeg;base64,dHJpcG1hdGU=";
+
+        mvc.perform(patch("/api/trips/{id}/cover", tripId).with(scopes(OWNER, "write:trips"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("coverImage", cover))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coverImage", is(cover)));
+
+        mvc.perform(get("/api/trips").with(scopes(OWNER, "read:trips")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == '%s')].coverImage".formatted(tripId), contains(cover)));
+    }
+    @Test
     void createsPastSingleDayTripWithoutAnInitialDestination() throws Exception {
         var start = LocalDate.now().minusDays(10);
         var body = """

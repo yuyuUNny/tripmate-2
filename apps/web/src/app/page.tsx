@@ -15,7 +15,7 @@ type Trip = {
   dates: string;
   duration: string;
   image?: string;
-  status: "Upcoming" | "Planning" | "Past";
+  status: "Upcoming" | "Ongoing" | "Past";
   people: string[];
   liked: boolean;
 };
@@ -26,12 +26,13 @@ type ApiTrip = {
   destination: string;
   startDate: string;
   endDate: string;
+  coverImage?: string | null;
 };
 
 function toTrip(trip: ApiTrip): Trip {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const status = trip.endDate < today ? "Past" : trip.startDate > today ? "Upcoming" : "Planning";
+  const status = trip.endDate < today ? "Past" : trip.startDate > today ? "Upcoming" : "Ongoing";
   const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
   const start = new Date(`${trip.startDate}T12:00:00`);
   const end = new Date(`${trip.endDate}T12:00:00`);
@@ -42,6 +43,7 @@ function toTrip(trip: ApiTrip): Trip {
     destination: trip.destination || "Route not started",
     dates: `${dateFormatter.format(start)} – ${dateFormatter.format(end)}`,
     duration: `${duration} ${duration === 1 ? "day" : "days"}`,
+    image: trip.coverImage || undefined,
     status,
     people: ["UL"],
     liked: false,
@@ -55,6 +57,25 @@ async function apiError(response: Response) {
   } catch {
     return `Request failed (${response.status})`;
   }
+}
+
+async function prepareCoverImage(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("Please choose an image file");
+  if (file.size > 15 * 1024 * 1024) throw new Error("Cover images must be smaller than 15 MB");
+
+  const image = await createImageBitmap(file);
+  const scale = Math.min(1, 1400 / image.width, 850 / image.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) {
+    image.close();
+    throw new Error("Could not prepare that image");
+  }
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+  return canvas.toDataURL("image/jpeg", 0.78);
 }
 
 function SearchIcon() {
@@ -160,17 +181,27 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 2400);
   }
 
-  function changeCover(trip: Trip, file?: File) {
+  async function changeCover(trip: Trip, file?: File) {
     setOpenMenuId(null);
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== "string") return;
-      updateTrip(trip.id, { image: reader.result });
+    const previousImage = trip.image;
+    try {
+      const image = await prepareCoverImage(file);
+      updateTrip(trip.id, { image });
+      const response = await authFetch(`/api/trips/${trip.id}/cover`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coverImage: image }),
+      });
+      if (!response.ok) throw new Error(await apiError(response));
+      const savedTrip = await response.json() as ApiTrip;
+      updateTrip(trip.id, { image: savedTrip.coverImage || image });
       setNotice(`Cover updated for ${trip.title}`);
       window.setTimeout(() => setNotice(""), 2400);
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      updateTrip(trip.id, { image: previousImage });
+      setNotice(error instanceof Error ? error.message : "Could not save the cover image");
+    }
   }
 
   async function deleteTrip() {
@@ -259,9 +290,9 @@ export default function Home() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by trip or destination" />
           </label>
           <div className="trips-filters" aria-label="Filter trips">
-            {(["All", "Upcoming", "Planning", "Past"] as const).map((filter) => (
+            {(["All", "Upcoming", "Ongoing", "Past"] as const).map((filter) => (
               <button key={filter} type="button" className={activeFilter === filter ? "active" : ""} aria-pressed={activeFilter === filter} onClick={() => setActiveFilter(filter)}>
-                {filter}{filter === "All" ? ` ${trips.length}` : ""}
+                {filter}
               </button>
             ))}
           </div>
@@ -283,7 +314,7 @@ export default function Home() {
                   {openMenuId === trip.id && (
                     <div className="trip-card-menu" role="menu">
                       <button type="button" role="menuitem" onClick={() => { setEditingTrip(trip); setOpenMenuId(null); }}><EditIcon /> Change trip name</button>
-                      <label role="menuitem"><PictureIcon /> Change cover picture<input type="file" accept="image/*" onChange={(event) => changeCover(trip, event.target.files?.[0])} /></label>
+                      <label role="menuitem"><PictureIcon /> Change cover picture<input type="file" accept="image/*" onChange={(event) => void changeCover(trip, event.target.files?.[0])} /></label>
                       <button className="danger" type="button" role="menuitem" onClick={() => { setDeletingTrip(trip); setOpenMenuId(null); }}><TrashIcon /> Delete trip</button>
                     </div>
                   )}

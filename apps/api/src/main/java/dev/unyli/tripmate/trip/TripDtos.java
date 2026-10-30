@@ -14,6 +14,8 @@ final class TripDtos {
     record UpdateTripDatesRequest(
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate) {}
+    record UpdateTripCoverRequest(
+            @NotBlank @Size(max = 1_500_000) String coverImage) {}
     record AddItineraryItemRequest(
             @NotBlank @Size(max = 160) String title,
             @NotNull OffsetDateTime startAt,
@@ -24,12 +26,12 @@ final class TripDtos {
             return new ItineraryItemResponse(item.getId(), item.getTitle(), item.getStartAt(), item.getEndAt(), item.getPosition(), item.getVersion());
         }
     }
-    record TripResponse(UUID id, String name, String destination, LocalDate startDate, LocalDate endDate, long version, Instant createdAt, TripRole currentUserRole, List<ItineraryItemResponse> itineraryItems) {
+    record TripResponse(UUID id, String name, String destination, LocalDate startDate, LocalDate endDate, String coverImage, long version, Instant createdAt, TripRole currentUserRole, List<ItineraryItemResponse> itineraryItems) {
         static TripResponse from(Trip trip, TripRole currentUserRole) {
             var items = trip.getItineraryItems().stream()
                     .sorted(Comparator.comparingInt(ItineraryItem::getPosition))
                     .map(ItineraryItemResponse::from).toList();
-            return new TripResponse(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartDate(), trip.getEndDate(), trip.getVersion(), trip.getCreatedAt(), currentUserRole, items);
+            return new TripResponse(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartDate(), trip.getEndDate(), trip.getCoverImage(), trip.getVersion(), trip.getCreatedAt(), currentUserRole, items);
         }
     }
 }

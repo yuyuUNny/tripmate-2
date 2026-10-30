@@ -15,6 +15,7 @@ public class Trip {
     @Column(nullable = false, length = 160) private String destination;
     @Column(name = "start_date", nullable = false) private LocalDate startDate;
     @Column(name = "end_date", nullable = false) private LocalDate endDate;
+    @Column(name = "cover_image", columnDefinition = "TEXT") private String coverImage;
     @Version @Column(nullable = false) private long version;
     @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -35,11 +36,13 @@ public class Trip {
         this.startDate = startDate;
         this.endDate = endDate;
     }
+    public void updateCoverImage(String coverImage) { this.coverImage = coverImage; }
     public UUID getId() { return id; }
     public String getName() { return name; }
     public String getDestination() { return destination; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
+    public String getCoverImage() { return coverImage; }
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public List<ItineraryItem> getItineraryItems() { return List.copyOf(itineraryItems); }

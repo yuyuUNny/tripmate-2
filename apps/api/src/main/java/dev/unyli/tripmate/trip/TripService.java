@@ -53,6 +53,16 @@ public class TripService {
         return TripResponse.from(trips.save(trip), membership.getRole());
     }
     @Transactional
+    public TripResponse updateCover(UUID tripId, String subject, UpdateTripCoverRequest request) {
+        if (!request.coverImage().startsWith("data:image/jpeg;base64,")) {
+            throw new InvalidTripException("coverImage must be a JPEG data URL");
+        }
+        var membership = access.requireMembership(tripId, subject, TripRole.OWNER, TripRole.EDITOR);
+        var trip = findTrip(tripId);
+        trip.updateCoverImage(request.coverImage());
+        return TripResponse.from(trips.save(trip), membership.getRole());
+    }
+    @Transactional
     public TripResponse addItineraryItem(UUID tripId, String subject, AddItineraryItemRequest request) {
         if (!request.endAt().isAfter(request.startAt())) throw new InvalidTripException("endAt must be after startAt");
         var membership = access.requireMembership(tripId, subject, TripRole.OWNER, TripRole.EDITOR);
