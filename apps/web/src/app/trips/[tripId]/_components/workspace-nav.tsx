@@ -24,7 +24,13 @@ export function WorkspaceNav({ tripId }: { tripId: string }) {
           return (
             <Link key={destination.id} href={href} className="tmw-city-link" aria-current={active ? "page" : undefined}>
               <span className="tmw-city-index">{index + 1}</span>
-              <span><strong>{destination.city}</strong><small>{formatShortDate(destination.arrivalDate)}–{formatShortDate(destination.departureDate)} · {days} days</small></span>
+              <span className="tmw-city-copy">
+                <strong>{destination.city}</strong>
+                <span className="tmw-city-meta">
+                  <span className="tmw-city-date"><PlanIcon className="tmw-city-date-icon" />{formatShortDate(destination.arrivalDate)}–{formatShortDate(destination.departureDate)}</span>
+                  <small>{days} days</small>
+                </span>
+              </span>
             </Link>
           );
         })}

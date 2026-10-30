@@ -139,7 +139,6 @@ export default function OverviewPage() {
                 <article className="tmw-destination-card">
                   <span className="tmw-destination-number">{String(index + 1).padStart(2, "0")}</span>
                   <div className="tmw-destination-copy">
-                    <span>{destination.country.toUpperCase()}</span>
                     <div className="tmw-destination-title"><h3>{destination.city}</h3><button type="button" onClick={() => confirmRemoveDestination(destination.id, destination.city)} aria-label={`Remove ${destination.city}`}>×</button></div>
                     <div className="tmw-destination-dates"><p>{formatShortDate(destination.arrivalDate)}–{formatShortDate(destination.departureDate)} · {tripDays(destination.arrivalDate, destination.departureDate).length} days</p><button type="button" onClick={() => beginEditingDestination(destination.id, destination.arrivalDate, destination.departureDate)} aria-label={`Edit dates for ${destination.city}`}><PencilIcon /></button></div>
                   </div>
