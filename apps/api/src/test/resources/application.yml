@@ -8,3 +8,6 @@ spring:
     open-in-view: false
     hibernate.ddl-auto: validate
   flyway.enabled: true
+auth0:
+  issuer: https://test.example.auth0.com/
+  audience: https://api.tripmate.local

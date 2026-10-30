@@ -33,6 +33,8 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("09:00");
   const [detail, setDetail] = useState("");
+  const [address, setAddress] = useState("");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [placeSearchMessage, setPlaceSearchMessage] = useState("");
@@ -102,6 +104,8 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   function resetForm() {
     setTitle("");
     setDetail("");
+    setAddress("");
+    setCopyStatus("idle");
     setSelectedPlace(null);
     setPlaceResults([]);
     setPlaceSearchMessage("");
@@ -115,6 +119,8 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
     setTime(stop.time);
     setTitle(stop.title);
     setDetail(stop.detail);
+    setAddress(stop.formattedName ?? "");
+    setCopyStatus("idle");
     setSelectedPlace(null);
     setPlaceResults([]);
     setPlaceSearchMessage("");
@@ -128,8 +134,20 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
   function choosePlace(place: PlaceResult) {
     setSelectedPlace(place);
     setTitle(place.city);
+    setAddress(place.formattedName);
+    setCopyStatus("idle");
     setPlaceResults([]);
     setPlaceSearchMessage("");
+  }
+
+  async function copyAddress() {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
   }
 
   return (
@@ -158,9 +176,16 @@ export function DestinationPlanner({ destinationId }: { destinationId: string })
             <div className="tmw-quick-add-heading"><p className="tmw-panel-label">{editingStopId ? "EDIT" : "ADD TO"} {dayLabel(activeDay).toUpperCase()}</p><h3>{editingStopId ? "Edit place" : "New place"}</h3></div>
             <label>Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} required /></label>
             <div className="tmw-stop-place-field">
-              <label>Place<input value={title} onChange={(event) => { setTitle(event.target.value); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchMessage(""); }} placeholder={`Search places in ${destination.city}`} maxLength={160} role="combobox" aria-autocomplete="list" aria-controls="place-suggestions" aria-expanded={placeResults.length > 0} required /></label>
+              <label>Place<input value={title} onChange={(event) => { setTitle(event.target.value); setAddress(""); setCopyStatus("idle"); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchMessage(""); }} placeholder={`Search places in ${destination.city}`} maxLength={160} role="combobox" aria-autocomplete="list" aria-controls="place-suggestions" aria-expanded={placeResults.length > 0} required /></label>
               {placeResults.length > 0 && <div id="place-suggestions" className="tmw-place-results tmw-stop-place-results" role="listbox" aria-label={`Places near ${destination.city}`}>{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{place.formattedName}</small></span><b>{place.countryCode}</b></button>)}</div>}
               {placeSearchMessage && <small className="tmw-stop-place-message">{placeSearchMessage}</small>}
+            </div>
+            <div className="tmw-stop-address">
+              <span>Address</span>
+              <div>
+                <output aria-live="polite">{address || "Choose a place to display its address"}</output>
+                <button type="button" onClick={copyAddress} disabled={!address}>{copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Try again" : "Copy"}</button>
+              </div>
             </div>
             <label className="tmw-stop-note">Note<input value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="What will you do?" maxLength={100} /></label>
             <div className="tmw-stop-form-actions">

@@ -6,6 +6,9 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,21 +17,26 @@ public class TripController {
     private final TripService trips;
     public TripController(TripService trips) { this.trips = trips; }
     @PostMapping
-    public ResponseEntity<TripResponse> create(@Valid @RequestBody CreateTripRequest request) {
-        var trip = trips.create(request);
+    @PreAuthorize("hasAuthority('SCOPE_write:trips')")
+    public ResponseEntity<TripResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateTripRequest request) {
+        var trip = trips.create(jwt.getSubject(), request);
         return ResponseEntity.created(URI.create("/api/trips/" + trip.id())).body(trip);
     }
     @GetMapping
-    public List<TripResponse> list() { return trips.list(); }
+    @PreAuthorize("hasAuthority('SCOPE_read:trips')")
+    public List<TripResponse> list(@AuthenticationPrincipal Jwt jwt) { return trips.list(jwt.getSubject()); }
     @GetMapping("/{tripId}")
-    public TripResponse get(@PathVariable UUID tripId) { return trips.get(tripId); }
+    @PreAuthorize("hasAuthority('SCOPE_read:trips')")
+    public TripResponse get(@PathVariable UUID tripId, @AuthenticationPrincipal Jwt jwt) { return trips.get(tripId, jwt.getSubject()); }
     @DeleteMapping("/{tripId}")
-    public ResponseEntity<Void> delete(@PathVariable UUID tripId) {
-        trips.delete(tripId);
+    @PreAuthorize("hasAuthority('SCOPE_write:trips')")
+    public ResponseEntity<Void> delete(@PathVariable UUID tripId, @AuthenticationPrincipal Jwt jwt) {
+        trips.delete(tripId, jwt.getSubject());
         return ResponseEntity.noContent().build();
     }
     @PostMapping("/{tripId}/itinerary-items")
-    public ResponseEntity<TripResponse> addItem(@PathVariable UUID tripId, @Valid @RequestBody AddItineraryItemRequest request) {
-        return ResponseEntity.ok(trips.addItineraryItem(tripId, request));
+    @PreAuthorize("hasAuthority('SCOPE_write:trips')")
+    public ResponseEntity<TripResponse> addItem(@PathVariable UUID tripId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AddItineraryItemRequest request) {
+        return ResponseEntity.ok(trips.addItineraryItem(tripId, jwt.getSubject(), request));
     }
 }

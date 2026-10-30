@@ -12,11 +12,13 @@ The foundation milestone includes:
 - Trip and itinerary persistence with PostgreSQL-compatible Flyway migrations.
 - Version fields on collaborative entities, ready for tested conflict handling.
 - Request validation, consistent API errors, and integration tests.
+- Auth0 OAuth 2.0/OIDC login with JWT issuer, audience, and scope validation.
+- PostgreSQL-backed owner/editor/viewer authorization for each trip.
 - Docker Compose services for PostgreSQL and Redis.
 - GitHub Actions checks for both applications.
 
-Authentication, authorization, WebSockets, Redis edit leases, and two-client conflict recovery are
-roadmap items—not completed claims.
+WebSockets, Redis edit leases, invitation acceptance, and two-client conflict recovery are roadmap
+items—not completed claims.
 
 ## Origin and ownership
 
@@ -77,19 +79,23 @@ This runs Spring Boot integration tests, TypeScript checking, ESLint, and a prod
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/trips` | List trips |
-| `POST` | `/api/trips` | Create a trip |
-| `GET` | `/api/trips/{tripId}` | Read a trip and itinerary |
-| `DELETE` | `/api/trips/{tripId}` | Delete a trip and its itinerary |
-| `POST` | `/api/trips/{tripId}/itinerary-items` | Add an itinerary item |
+| `GET` | `/api/trips` | List the current user's trips (`read:trips`) |
+| `POST` | `/api/trips` | Create a trip as its owner (`write:trips`) |
+| `GET` | `/api/trips/{tripId}` | Read a trip as owner/editor/viewer (`read:trips`) |
+| `DELETE` | `/api/trips/{tripId}` | Delete a trip as owner (`write:trips`) |
+| `POST` | `/api/trips/{tripId}/itinerary-items` | Add an item as owner/editor (`write:trips`) |
+| `GET` | `/api/trips/{tripId}/members` | List trip members (`read:trips`) |
+| `PUT` | `/api/trips/{tripId}/members` | Add or change an editor/viewer as owner (`manage:members`) |
+| `DELETE` | `/api/trips/{tripId}/members/{subject}` | Remove a collaborator as owner (`manage:members`) |
 
-The API remains deliberately small while authorization and concurrency guarantees are built and
-tested. Public deployment must wait until authentication and ownership rules are implemented.
+Auth0 scopes control categories of operations. PostgreSQL memberships independently decide whether
+the authenticated subject can perform that operation on a particular trip. The current membership
+API accepts an Auth0 subject; email invitation and acceptance are intentionally a later workflow.
 
 ## Roadmap
 
-1. Spring Security authentication and owner/editor/viewer authorization.
-2. Next.js trip dashboard and generated typed API client.
+1. Email invitation and authenticated acceptance into trip membership.
+2. Generated typed API client and server-backed collaborator UI.
 3. Optimistic update contract with `409 Conflict` recovery.
 4. Redis-backed edit leases and collaborator presence.
 5. WebSocket synchronization and reconnect reconciliation.

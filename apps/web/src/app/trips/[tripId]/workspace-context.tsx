@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { authFetch } from "@/lib/api";
 
 export type Destination = {
   id: string;
@@ -107,7 +108,7 @@ export function WorkspaceProvider({ tripId, children }: { tripId: string; childr
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`/api/trips/${tripId}`, { cache: "no-store", signal: controller.signal })
+    void authFetch(`/api/trips/${tripId}`, { cache: "no-store", signal: controller.signal })
       .then((response) => response.ok ? response.json() as Promise<TripDetails> : null)
       .then((savedTrip) => { if (savedTrip) setTrip(savedTrip); })
       .catch(() => { /* The workspace remains usable if trip metadata is temporarily unavailable. */ });

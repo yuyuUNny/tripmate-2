@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useUser } from "@auth0/nextjs-auth0/client";
+import { authFetch } from "@/lib/api";
+import { AuthGuard } from "./_components/auth-guard";
 import "./home.css";
 
 type Trip = {
@@ -92,6 +95,7 @@ function TrashIcon() {
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useUser();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | Trip["status"]>("All");
@@ -107,7 +111,8 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/trips", { cache: "no-store", signal: controller.signal })
+    if (!user) return () => controller.abort();
+    void authFetch("/api/trips", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(await apiError(response));
         return response.json() as Promise<ApiTrip[]>;
@@ -121,7 +126,7 @@ export default function Home() {
       })
       .finally(() => setIsLoading(false));
     return () => controller.abort();
-  }, []);
+  }, [user]);
 
   const visibleTrips = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -172,7 +177,7 @@ export default function Home() {
     if (!deletingTrip) return;
     setPendingAction("delete");
     try {
-      const response = await fetch(`/api/trips/${deletingTrip.id}`, { method: "DELETE" });
+      const response = await authFetch(`/api/trips/${deletingTrip.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error(await apiError(response));
       setTrips((current) => current.filter((trip) => trip.id !== deletingTrip.id));
       setNotice(`${deletingTrip.title} was deleted`);
@@ -195,7 +200,7 @@ export default function Home() {
     };
     setPendingAction("create");
     try {
-      const response = await fetch("/api/trips", {
+      const response = await authFetch("/api/trips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -215,8 +220,12 @@ export default function Home() {
     }
   }
 
+  const displayName = user?.name || user?.nickname || user?.email || "Traveler";
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+
   return (
-    <main className="trips-home">
+    <AuthGuard>
+      <main className="trips-home">
       <header className="trips-header">
         <Link className="trips-brand" href="/" aria-label="TripMate home">
           <span className="trips-brand-mark" aria-hidden="true">T</span>
@@ -224,9 +233,10 @@ export default function Home() {
         </Link>
         <nav className="trips-header-actions" aria-label="Account">
           <button className="trips-help" type="button">Help</button>
-          <button className="trips-profile" type="button" aria-label="Open profile for Uny Li">
-            <span>UL</span><span><strong>Uny Li</strong><small>Trip owner</small></span>
-          </button>
+          <div className="trips-profile" aria-label={`Signed in as ${displayName}`}>
+            <span>{initials}</span><span><strong>{displayName}</strong><small>Trip owner</small></span>
+          </div>
+          <a className="trips-help" href="/auth/logout">Log out</a>
         </nav>
       </header>
 
@@ -351,6 +361,7 @@ export default function Home() {
       )}
 
       <p className={`trip-toast ${notice ? "visible" : ""}`} role="status" aria-live="polite">{notice}</p>
-    </main>
+      </main>
+    </AuthGuard>
   );
 }

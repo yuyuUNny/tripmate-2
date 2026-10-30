@@ -174,21 +174,23 @@ export default function OverviewPage() {
       </div>
 
       {(destinations.length > 0 || isAddingDestination) && (
-        <section className="tmw-add-destination">
-          <div><p className="tmw-panel-label">{destinations.length ? "EXTEND THE ROUTE" : "START THE ROUTE"}</p><h2>{destinations.length ? "Add another destination" : "Add your first destination"}</h2><p>New cities are placed at the end of the journey. You can reorder them above.</p></div>
-          <form onSubmit={submitDestination}>
-            <div className="tmw-place-search-field">
-              <label>Destination<div className="tmw-place-search-control"><input value={placeQuery} onChange={(event) => { setPlaceQuery(event.target.value); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchStatus("idle"); setPlaceSearchMessage(""); }} placeholder="Start typing a city" role="combobox" aria-autocomplete="list" aria-controls="destination-suggestions" aria-expanded={placeResults.length > 0} required autoFocus={destinations.length === 0} /></div></label>
-              {placeResults.length > 0 && <div id="destination-suggestions" className="tmw-place-results" role="listbox" aria-label="Matching destinations">{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{[place.region, place.country].filter(Boolean).join(", ")}</small></span><b>{place.countryCode}</b></button>)}</div>}
-              {selectedPlace && <p className="tmw-place-selected"><span>✓</span> {selectedPlace.formattedName}</p>}
-              {placeSearchMessage && <p className={`tmw-place-search-message ${placeSearchStatus === "error" ? "error" : ""}`}>{placeSearchMessage}</p>}
-              <small className="tmw-geocoder-attribution">Place search © OpenStreetMap contributors</small>
-            </div>
-            <label>Arrive<input type="date" value={selectedArrivalDate} onChange={(event) => setArrivalDate(event.target.value)} required /></label>
-            <label>Leave<input type="date" value={selectedDepartureDate} min={selectedArrivalDate} onChange={(event) => setDepartureDate(event.target.value)} required /></label>
-            <button className="tmw-primary-button" type="submit" disabled={!selectedPlace}><PlusIcon/> Add city</button>
-          </form>
-        </section>
+        <>
+          <section className="tmw-add-destination">
+            <div><p className="tmw-panel-label">{destinations.length ? "EXTEND THE ROUTE" : "START THE ROUTE"}</p><h2>{destinations.length ? "Add another destination" : "Add your first destination"}</h2><p>New cities are placed at the end of the journey. You can reorder them above.</p></div>
+            <form onSubmit={submitDestination}>
+              <div className="tmw-place-search-field">
+                <label>Destination<div className="tmw-place-search-control"><input value={placeQuery} onChange={(event) => { setPlaceQuery(event.target.value); setSelectedPlace(null); setPlaceResults([]); setPlaceSearchStatus("idle"); setPlaceSearchMessage(""); }} placeholder="Start typing a city" role="combobox" aria-autocomplete="list" aria-controls="destination-suggestions" aria-expanded={placeResults.length > 0} required autoFocus={destinations.length === 0} /></div></label>
+                {placeResults.length > 0 && <div id="destination-suggestions" className="tmw-place-results" role="listbox" aria-label="Matching destinations">{placeResults.map((place) => <button type="button" role="option" aria-selected={selectedPlace?.id === place.id} key={place.id} onClick={() => choosePlace(place)}><span><strong>{place.city}</strong><small>{[place.region, place.country].filter(Boolean).join(", ")}</small></span><b>{place.countryCode}</b></button>)}</div>}
+                {selectedPlace && <p className="tmw-place-selected"><span>✓</span> {selectedPlace.formattedName}</p>}
+                {placeSearchMessage && <p className={`tmw-place-search-message ${placeSearchStatus === "error" ? "error" : ""}`}>{placeSearchMessage}</p>}
+              </div>
+              <label>Arrive<input type="date" value={selectedArrivalDate} onChange={(event) => setArrivalDate(event.target.value)} required /></label>
+              <label>Leave<input type="date" value={selectedDepartureDate} min={selectedArrivalDate} onChange={(event) => setDepartureDate(event.target.value)} required /></label>
+              <button className="tmw-primary-button" type="submit" disabled={!selectedPlace}><PlusIcon/> Add city</button>
+            </form>
+          </section>
+          <small className="tmw-geocoder-attribution">Place search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></small>
+        </>
       )}
     </div>
   );

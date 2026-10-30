@@ -5,12 +5,14 @@ import { WorkspaceNav } from "./_components/workspace-nav";
 import { WorkspaceProvider, WorkspaceTripIdentity } from "./workspace-context";
 import "leaflet/dist/leaflet.css";
 import "./workspace.css";
+import { AuthGuard } from "../../_components/auth-guard";
 
 export default async function TripLayout({ children, params }: LayoutProps<"/trips/[tripId]">) {
   const { tripId } = await params;
 
   return (
-    <WorkspaceProvider tripId={tripId}>
+    <AuthGuard>
+      <WorkspaceProvider tripId={tripId}>
       <div className="tmw-shell">
         <aside className="tmw-sidebar">
           <div className="tmw-sidebar-top">
@@ -39,6 +41,7 @@ export default async function TripLayout({ children, params }: LayoutProps<"/tri
         </aside>
         <main className="tmw-main">{children}</main>
       </div>
-    </WorkspaceProvider>
+      </WorkspaceProvider>
+    </AuthGuard>
   );
 }

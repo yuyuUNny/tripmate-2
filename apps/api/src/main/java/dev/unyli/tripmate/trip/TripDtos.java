@@ -1,5 +1,6 @@
 package dev.unyli.tripmate.trip;
 
+import dev.unyli.tripmate.membership.TripRole;
 import jakarta.validation.constraints.*;
 import java.time.*;
 import java.util.*;
@@ -20,12 +21,12 @@ final class TripDtos {
             return new ItineraryItemResponse(item.getId(), item.getTitle(), item.getStartAt(), item.getEndAt(), item.getPosition(), item.getVersion());
         }
     }
-    record TripResponse(UUID id, String name, String destination, LocalDate startDate, LocalDate endDate, long version, Instant createdAt, List<ItineraryItemResponse> itineraryItems) {
-        static TripResponse from(Trip trip) {
+    record TripResponse(UUID id, String name, String destination, LocalDate startDate, LocalDate endDate, long version, Instant createdAt, TripRole currentUserRole, List<ItineraryItemResponse> itineraryItems) {
+        static TripResponse from(Trip trip, TripRole currentUserRole) {
             var items = trip.getItineraryItems().stream()
                     .sorted(Comparator.comparingInt(ItineraryItem::getPosition))
                     .map(ItineraryItemResponse::from).toList();
-            return new TripResponse(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartDate(), trip.getEndDate(), trip.getVersion(), trip.getCreatedAt(), items);
+            return new TripResponse(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartDate(), trip.getEndDate(), trip.getVersion(), trip.getCreatedAt(), currentUserRole, items);
         }
     }
 }

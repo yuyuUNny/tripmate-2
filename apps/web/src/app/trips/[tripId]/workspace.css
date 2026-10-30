@@ -346,7 +346,9 @@
 .tmw-place-selected, .tmw-place-search-message { position: absolute; top: calc(100% + 4px); left: 1px; right: 1px; margin: 0; padding: 4px 6px; overflow: hidden; background: #fffefa; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .tmw-place-selected { color: #39776a; }.tmw-place-selected span { font-weight: 900; }
 .tmw-place-search-message { color: #6e7973; }.tmw-place-search-message.error { color: #a64739; }
-.tmw-geocoder-attribution { position: absolute; top: calc(100% + 22px); left: 1px; color: #87918c; font-size: 7px; font-weight: 400; }
+.tmw-geocoder-attribution { display: block; margin: 7px 4px 0; color: #87918c; font-size: 8px; font-weight: 400; line-height: 1.4; text-align: right; }
+.tmw-geocoder-attribution a { color: inherit; text-decoration-color: #87918c80; text-underline-offset: 2px; }
+.tmw-geocoder-attribution a:hover { color: var(--teal); }
 
 /* The map and detailed itinerary stay together inside a destination. */
 .tmw-city-page { min-height: 100dvh; padding: clamp(26px, 4vw, 52px); }
@@ -379,6 +381,13 @@
 .tmw-stop-place-field { position: relative; min-width: 0; }
 .tmw-stop-place-results { top: calc(100% + 5px); }
 .tmw-stop-place-message { position: absolute; z-index: 2; top: calc(100% + 4px); left: 2px; right: 2px; overflow: hidden; color: #7b8580; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.tmw-stop-address { grid-column: 1 / -1; display: grid; gap: 7px; color: #59655f; font-size: 9px; font-weight: 800; }
+.tmw-stop-address > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 44px; background: #fffdf8; border: 1px solid #d7cfc1; border-radius: 3px; }
+.tmw-stop-address output { align-self: center; min-width: 0; padding: 0 11px; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.tmw-stop-address button { min-width: 72px; padding: 0 14px; color: var(--teal); background: #edf4f1; border: 0; border-left: 1px solid #d7cfc1; font-size: 10px; font-weight: 800; cursor: pointer; }
+.tmw-stop-address button:hover:not(:disabled) { color: white; background: var(--teal); }
+.tmw-stop-address button:disabled { color: #9da49f; background: #f3efe7; cursor: not-allowed; }
+.tmw-stop-address button:focus-visible { outline: 3px solid #f5a995; outline-offset: 2px; }
 .tmw-stop-note { grid-column: 1 / -1; }
 .tmw-stop-form-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .tmw-stop-form-actions .tmw-primary-button { min-width: 124px; }
@@ -444,7 +453,7 @@
   .tmw-local-leaflet-map, .tmw-local-map .tmw-map-loading { height: 330px; min-height: 330px; }
   .tmw-city-stop-list { padding-inline: 12px; }.tmw-city-stop-list article { grid-template-columns: 42px 26px minmax(0, 1fr) 30px; gap: 6px; }
   .tmw-quick-add { grid-template-columns: 1fr; padding-inline: 17px; }
-  .tmw-quick-add-heading, .tmw-stop-note, .tmw-stop-form-actions { grid-column: auto; }
+  .tmw-quick-add-heading, .tmw-stop-address, .tmw-stop-note, .tmw-stop-form-actions { grid-column: auto; }
   .tmw-quick-add-heading { display: block; }
   .tmw-route-summary div { padding-inline: 12px; }
 }
